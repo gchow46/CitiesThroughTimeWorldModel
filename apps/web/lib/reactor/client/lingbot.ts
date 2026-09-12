@@ -6,7 +6,10 @@ import { sdkError, WorldError } from "../../world-client";
 import type { WorldPayload } from "../../frontend-types";
 
 export const createLingbot: AdapterFactory = (video) => {
-  const model = new LingbotWorld2Model({ logLevel: "off" });
+  const model = new LingbotWorld2Model({
+    logLevel: (process.env.NEXT_PUBLIC_REACTOR_LOG_LEVEL ?? "off") as
+      "off" | "error" | "warn" | "info" | "debug" | "trace",
+  });
   const bus = new AdapterBus();
   let disposed = false;
   let connected = false;

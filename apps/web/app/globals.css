@@ -270,12 +270,7 @@ h1 em {
 }
 .scene-shade {
   z-index: 2;
-  background: linear-gradient(
-    0deg,
-    rgba(8, 20, 15, 0.8),
-    transparent 65%,
-    rgba(8, 20, 15, 0.25)
-  );
+  background: linear-gradient(0deg, rgba(8, 20, 15, 0.8), transparent 65%, rgba(8, 20, 15, 0.25));
   pointer-events: none;
 }
 .control-surface {
@@ -575,13 +570,7 @@ kbd {
   line-height: 1.6;
 }
 .is-playing .scene-shade {
-  background: linear-gradient(
-    0deg,
-    #0c180c99,
-    transparent 35%,
-    transparent 70%,
-    #0c180c66
-  );
+  background: linear-gradient(0deg, #0c180c99, transparent 35%, transparent 70%, #0c180c66);
 }
 @keyframes pulse {
   50% {

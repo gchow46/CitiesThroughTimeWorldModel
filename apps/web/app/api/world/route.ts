@@ -13,6 +13,7 @@ import { InvalidCityError } from "@/lib/geocode";
 import { InsufficientPhotosError } from "@/lib/ranking";
 import { UpstreamError } from "@/lib/reactor/token";
 import { MAX_DECADE, MIN_DECADE, type WorldRequest } from "@/lib/types";
+import { newRequestId, reqLog } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -60,8 +61,11 @@ function errorStatus(e: unknown): { status: number; body: Record<string, unknown
  * geocode → sources → rank → normalize → prompt → token pipeline (B7).
  */
 export async function POST(req: NextRequest) {
+  const requestId = newRequestId();
+  const t0 = Date.now();
   const allowed = await incrWithTtl(`rl:world:${clientIp(req)}`, 60);
   if (allowed > RATE_LIMIT) {
+    reqLog(requestId, { route: "world" }).warn({ ip: clientIp(req) }, "rate_limited");
     return apiError(429, "rate_limited", "Too many requests — 10/min/IP.");
   }
 
@@ -93,6 +97,9 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 
+  const logger = reqLog(requestId, { route: "world", model });
+  logger.info({ city: body.city, decade: body.decade }, "request");
+
   if (isMockWorld()) {
     return ndjsonStream([...MOCK_STAGES, mockWorldPayload(model)]);
   }
@@ -101,17 +108,25 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (o: unknown) => controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
+      const emit = (o: unknown) => {
+        const ev = o as { stage?: string; detail?: string };
+        if (ev.stage) logger.info({ stage: ev.stage, ms: Date.now() - t0 }, ev.detail ?? ev.stage);
+        send(o);
+      };
       try {
         const payload = await runWorldPipeline(
           { city: body.city!, decade: body.decade!, model },
-          send,
+          emit,
         );
+        logger.info({ ms: Date.now() - t0, cacheHit: payload.meta.cacheHit }, "done");
         send(payload);
       } catch (e) {
         const known = errorStatus(e);
-        if (known) send({ status: known.status, ...known.body });
-        else {
-          console.error("[world] pipeline failed:", e);
+        if (known) {
+          logger.warn({ ms: Date.now() - t0, err: known.body }, "pipeline_error");
+          send({ status: known.status, ...known.body });
+        } else {
+          logger.error({ ms: Date.now() - t0, err: e }, "pipeline_failed");
           send({ status: 502, error: "upstream_failed", message: "World pipeline failed." });
         }
       } finally {

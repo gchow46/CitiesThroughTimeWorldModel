@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "seed:dry": "tsx scripts/seed-dry.ts",
+    "demo:matrix": "tsx scripts/demo-matrix.ts",
+    "prewarm": "tsx scripts/prewarm.ts",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
     "@upstash/redis": "^1.38.4",
     "@vercel/blob": "^2.8.0",
     "next": "^15.5.0",
+    "pino": "^10.3.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sharp": "^0.35.4"

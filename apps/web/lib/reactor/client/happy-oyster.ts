@@ -6,7 +6,12 @@ import { sdkError, WorldError } from "../../world-client";
 import type { WorldPayload } from "../../frontend-types";
 
 export const createHappyOyster: AdapterFactory = (video) => {
-  const model = new HappyOysterModel({ mode: "adventure", videoElement: video, logLevel: "off" });
+  const model = new HappyOysterModel({
+    mode: "adventure",
+    videoElement: video,
+    logLevel: (process.env.NEXT_PUBLIC_REACTOR_LOG_LEVEL ?? "off") as
+      "verbose" | "debug" | "info" | "warn" | "error" | "none",
+  });
   const bus = new AdapterBus();
   let disposed = false;
   let reseeding = false;

@@ -15,7 +15,12 @@ export default defineConfig({
     command: "node node_modules/next/dist/bin/next dev --hostname 127.0.0.1",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
-    env: { MOCK_WORLD: "1", MOCK_TOKEN: "1" },
+    // LIVE_E2E=1 runs the live-session spec against the real backend
+    // (REACTOR_API_KEY from .env.local); everything else uses mocks.
+    env:
+      process.env.LIVE_E2E === "1"
+        ? { MOCK_WORLD: "0", MOCK_TOKEN: "0", NEXT_PUBLIC_REACTOR_LOG_LEVEL: "debug" }
+        : { MOCK_WORLD: "1", MOCK_TOKEN: "1" },
     timeout: 120_000,
   },
 });

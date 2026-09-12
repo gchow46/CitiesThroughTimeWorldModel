@@ -74,8 +74,23 @@ services/       (B9, optional) Modal GPU restoration
 ## Checks
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm test
+pnpm typecheck && pnpm lint && pnpm test   # unit
+pnpm --filter web e2e                      # playwright (chromium)
+pnpm demo:matrix                           # time-to-world per cell, both models
+pnpm prewarm                               # warm shared seed cache for demo cells
 ```
+
+## Deploy (Vercel)
+
+1. `vercel link` at repo root → set project **root directory to `apps/web`**.
+2. `vercel env add` / dashboard for: `REACTOR_API_KEY`, `WORLD_MODEL`,
+   `ENABLED_MODELS`, `BLOB_READ_WRITE_TOKEN`, `UPSTASH_REDIS_REST_URL`,
+   `UPSTASH_REDIS_REST_TOKEN`, and optionally `GOOGLE_CSE_KEY`/`GOOGLE_CSE_CX`,
+   `EUROPEANA_KEY`, `FLICKR_KEY`, `RESTORE_ENDPOINT`/`RESTORE_KEY`.
+   Do **not** set `MOCK_WORLD`/`MOCK_TOKEN` in production.
+3. Provision **Vercel Blob** (needed for Happy Oyster's public-URL seeds) and
+   **Upstash Redis** (cross-instance cache + rate limiting).
+4. `vercel deploy --prod`, then `pnpm prewarm --base https://<app>.vercel.app`.
 
 ## Rules of the road
 
