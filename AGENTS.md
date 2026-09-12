@@ -5,11 +5,11 @@ City + decade → real era photos → a Reactor world model you walk through wit
 ## Stack (MVP1)
 
 - **Frontend + backend**: single Next.js app in `apps/web` (App Router, TS strict, pnpm) orchestrates everything. No separate API service.
-- **GPU**: Modal (Python) in `services/restore` — one web endpoint running Real-ESRGAN to upscale/denoise seed photos. Called from `lib/image.ts`; `sharp`-only fallback when `RESTORE_ENDPOINT` is unset or the call fails.
+- **GPU (optional)**: Modal (Python) in `services/restore` — one web endpoint running Real-ESRGAN to upscale/denoise seed photos. Called from `lib/image.ts` only when `RESTORE_ENDPOINT` is set; `sharp`-only otherwise or on failure. MVP1 must ship without it.
 - **World models**: Reactor (reactor.inc) via a pluggable adapter registry — `lingbot-world-2` and `happy-oyster-adventure` are both first-class. `REACTOR_API_KEY` is server-only; the browser gets short-lived model-scoped JWTs from `POST /api/reactor/token`.
 - **Photo sourcing**: Wikimedia Commons, Europeana, Flickr Commons (open licenses), Google Custom Search as fallback only.
 - **Storage**: Vercel Blob (seed images, public URLs), Upstash Redis (cache + rate limit).
-- **Deploy**: Vercel (web) + `modal deploy` (restore service).
+- **Deploy**: Vercel (web); `modal deploy` for the optional restore service.
 
 ## Repo layout
 
@@ -17,7 +17,7 @@ City + decade → real era photos → a Reactor world model you walk through wit
 apps/web/app           routes: landing, /world, /api/world, /api/world/cache, /api/reactor/token
 apps/web/lib           geocode, sources/, ranking, image, prompts/, cache, reactor/
 apps/web/lib/reactor   adapter.ts (interface), registry.ts, lingbot.ts, happyOyster.ts, controls.ts
-services/restore       Modal app: app.py (web endpoint), smoke.py
+services/restore       (optional) Modal app: app.py (web endpoint), smoke.py
 docs/                  api-contract.md, adr/, adding-a-model.md
 scripts/               GitHub issue automation (PowerShell, needs GH_TOKEN)
 ```
@@ -31,7 +31,7 @@ scripts/               GitHub issue automation (PowerShell, needs GH_TOKEN)
 - Cache keys: `world:{citySlug}:{decade}` (shared) and `world:{citySlug}:{decade}:{modelId}` (per-model state). Switching models must not re-run sourcing.
 - Licensing: only open-licensed archive photos by default; every rendered seed shows credit + license. Google CSE seeds carry `licenseConfidence: low`.
 - Always `dispose()` sessions on teardown — Reactor sessions are metered.
-- Modal is never on the critical failure path: every call has a timeout and a `sharp`-only fallback; `seed.restored` records which path ran.
+- Modal is optional and never on the critical failure path: nothing may require `RESTORE_ENDPOINT`; every call has a timeout and a `sharp`-only fallback; `seed.restored` records which path ran.
 - Never ship `REACTOR_API_KEY`, `RESTORE_KEY`, or archive keys to the browser.
 
 ## Commands (once `apps/web` exists)
@@ -41,8 +41,8 @@ pnpm dev                                   # MOCK_WORLD=1 for the canned /api/wo
 pnpm typecheck && pnpm lint && pnpm test
 pnpm e2e                                   # Playwright, fake adapter
 pnpm seed:dry --city Amsterdam --decade 1960 [--no-restore]   # run sourcing pipeline without UI
-modal deploy services/restore              # deploy GPU restoration endpoint
-modal run services/restore/smoke.py --url <img>   # smoke test
+modal deploy services/restore              # (optional) deploy GPU restoration endpoint
+modal run services/restore/smoke.py --url <img>   # (optional) smoke test
 ```
 
 ## GitHub issue tooling

@@ -14,7 +14,7 @@ Long-term the project roads toward multi-era coverage, GIS-aligned geometry, and
 1. User submits `{city, decade}` → `POST /api/world`
 2. Backend geocodes the city (Nominatim) → canonical name + bounding box
 3. Seed pipeline queries open archives (Wikimedia Commons, Europeana, Flickr Commons) for photos matching (bbox/city, decade, open license); falls back to Google Custom Search if too few candidates
-4. Candidates are ranked; the top ones are upscaled/denoised on Modal (GPU), smart-cropped to 16:9 and uploaded to blob storage
+4. Candidates are ranked; the top ones are smart-cropped to 16:9 and uploaded to blob storage (optionally upscaled/denoised on Modal first)
 5. Prompt composer renders a `city × decade` prompt
 6. API mints a Reactor token scoped to the selected model and returns `{model, sessionToken, seed, alternates, prompt, modelState}`
 7. Browser opens the session via the model's adapter and the user walks; re-seed on drift
@@ -29,8 +29,8 @@ Unsupported (city, decade) pairs return a graceful `insufficient_archival_photos
 | Model selection | Config default (`WORLD_MODEL`) + hidden override (`?model=`, dev-panel cookie). Not user-facing | Token route mints per requested model; cache stores per-model state side by side |
 | Photo source | Open archives first, Google Custom Search JSON API as fallback | Clean licensing by default; CSE results carry `licenseConfidence: low` |
 | Backend | Single Next.js app (App Router API routes) orchestrates everything | One codebase for both hackers; no separate API service |
-| Modal | **GPU restoration only** — a Modal web endpoint running Real-ESRGAN upscales/denoises chosen seed photos | Next.js calls it from the image step; `sharp`-only fallback on any failure so Modal is never on the critical failure path |
-| Infra | Vercel + Vercel Blob + Upstash Redis + Modal | Zero-ops; Modal scales to zero outside demos |
+| Modal | **Optional, GPU restoration only** — a Modal web endpoint running Real-ESRGAN upscales/denoises chosen seed photos | MVP1 ships and demos with `RESTORE_ENDPOINT` unset. When set, Next.js calls it from the image step with a `sharp`-only fallback, so Modal is never on the critical failure path |
+| Infra | Vercel + Vercel Blob + Upstash Redis (+ Modal, optional) | Zero-ops; Modal scales to zero outside demos |
 
 ## Model flexibility — design
 
@@ -99,7 +99,7 @@ apps/web (Next.js 15, App Router, TS)
       registry.ts                 MODELS map + resolveModel()
       lingbot.ts, happyOyster.ts  implementations
       controls.ts                 normalized MoveDir/LookDir + per-model mapping tables
-services/restore (Modal, Python)
+services/restore (Modal, Python — optional)
   app.py                        @modal.web_endpoint POST {imageUrl, targetWidth} → {restoredUrl, ms}; Real-ESRGAN on A10G
   smoke.py                      modal run smoke test
 docs/
@@ -141,10 +141,10 @@ scripts/                          GitHub issue automation
 2. Shared cache lookup → on hit load per-model state, mint token, return (≤ 2s)
 3. Geocode (cached 30d)
 4. Sources in parallel (6s timeout each, error-isolated); `< MIN_CANDIDATES (5)` → Google CSE; `< 1` → 404
-5. Rank → top 4 → restore on Modal (parallel, 10s timeout, sharp-only fallback) → normalize → Blob
+5. Rank → top 4 → [optional: restore on Modal, parallel, 10s timeout, sharp-only fallback] → normalize → Blob
 6. Compose prompt (consults `caps`) → mint token → write cache → return
 
-Budget: ≤ 30s cold (incl. restoration), ≤ 2s warm.
+Budget: ≤ 25s cold (≤ 30s with restoration on), ≤ 2s warm.
 
 ## Tickets — 2 hackers
 
@@ -160,7 +160,7 @@ GitHub issues **#34–#53**, labels `mvp1` + `hacker-a` / `hacker-b` / `integrat
 | | #42 A6 HUD + capability-aware actions | #48 B6 image normalization + Blob (calls B9) | |
 | | | #49 B7 orchestrator + cache + streaming | |
 | | | #50 B8 prompt composer + decade packs | |
-| | | #53 B9 Modal GPU restoration endpoint | |
+| | | #53 B9 Modal GPU restoration endpoint *(optional)* | |
 
 ### Dependency graph
 
@@ -168,11 +168,11 @@ GitHub issues **#34–#53**, labels `mvp1` + `hacker-a` / `hacker-b` / `integrat
 I1 ─┬─ A1 ─ A4 ─ A5 ─ A6
     ├─ A2 ─ A3 ─┘
     ├─ B1 ─ B2 ─ B3 ─ B4 ─ B5 ─ B7 ─ I4 ─ I5
-    │        B9 ─ B6 ──┘     B8 ─┘
+    │   (B9)─ B6 ──┘     B8 ─┘
 I2 ─┴─ I3 (needs I2 + stub adapters)
 ```
 
-B9 is a soft dependency of B6: the `sharp`-only path must work with `RESTORE_ENDPOINT` unset, so B6 can land first and B9 slot in behind it.
+B9 is **optional** and a soft dependency of B6: the `sharp`-only path must work with `RESTORE_ENDPOINT` unset. Pick B9 up after B1–B8 are green, or earlier if pre-1950 seeds look too soft to demo.
 
 A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry --city Amsterdam --decade 1960` until A1 lands.
 
@@ -181,8 +181,9 @@ A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry
 - `pnpm typecheck && pnpm lint && pnpm test` green in CI
 - Unit: geocoder fixtures; each `SeedSource` against recorded HTTP fixtures; ranking golden tests; prompt composer per-model limits; token route never leaks the key and rejects disabled/unknown models
 - Adapter contract tests pass for LingBot, Happy Oyster, and the fake adapter
-- Integration: Amsterdam/1960 cold ≤ 30s, warm ≤ 2s; Lagos/1950 → 404 with `closestDecade`; `?model=` switches token scope and adapter without re-sourcing
-- Modal: `modal run services/restore/smoke.py` returns a sharper 1280×720 from a 1920s scan than sharp-only; `/api/world` still succeeds with `RESTORE_ENDPOINT` unset or the endpoint down (`seed.restored: false`)
+- Integration: Amsterdam/1960 cold ≤ 25s (≤ 30s with restoration), warm ≤ 2s; Lagos/1950 → 404 with `closestDecade`; `?model=` switches token scope and adapter without re-sourcing
+- `/api/world` succeeds with `RESTORE_ENDPOINT` unset (`seed.restored: false`) — this is the default MVP1 configuration
+- Modal (if B9 is done): `modal run services/restore/smoke.py` returns a sharper 1280×720 from a 1920s scan than sharp-only; `/api/world` still succeeds with the endpoint down
 - E2E (Playwright, fake adapter): landing → walking; distinct error UIs
 - Manual: both real adapters respond to WASD; re-seed works per model; teardown leaves no dangling sessions
 - Licensing: every seed shows credit + license; CSE seeds carry a low-confidence badge
