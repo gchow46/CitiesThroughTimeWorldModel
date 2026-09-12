@@ -1,92 +1,202 @@
 # Cities Through Time — Implementation Plan
 
-An interactive, explorable world model of a city (Amsterdam first) as it looked across decades — 1960s, 70s, 80s… — and eventually forecast ~10 years into the future. A VEED-generated "news reporter" narrates period context as the user walks the streets.
+An interactive, explorable world model of any city as it looked in a given decade. The user enters a **city** and a **decade**; the app sources real photos of that city from that era, seeds a Reactor world model with the best one, and lets the user walk the streets with WASD.
 
-## Stack
+Long-term the project roads toward multi-era coverage, GIS-aligned geometry, and forecasting a city ~10 years into the future. Those are tracked as `roadmap` issues; this document covers **MVP1**.
 
-| Layer | Tech | Role |
+## MVP1 — product spec
+
+**Input**: `city` (free text, geocoded) + `decade` (dropdown, 1900s–2020s).
+**Output**: a live Reactor session seeded with a real era photo; first-person WASD + mouse-look navigation.
+
+**Flow**:
+
+1. User submits `{city, decade}` → `POST /api/world`
+2. Backend geocodes the city (Nominatim) → canonical name + bounding box
+3. Seed pipeline queries open archives (Wikimedia Commons, Europeana, Flickr Commons) for photos matching (bbox/city, decade, open license); falls back to Google Custom Search if too few candidates
+4. Candidates are ranked, the top ones smart-cropped to 16:9 and uploaded to blob storage
+5. Prompt composer renders a `city × decade` prompt
+6. API mints a Reactor token scoped to the selected model and returns `{model, sessionToken, seed, alternates, prompt, modelState}`
+7. Browser opens the session via the model's adapter and the user walks; re-seed on drift
+
+Unsupported (city, decade) pairs return a graceful `insufficient_archival_photos` error with a `closestDecade` hint rather than a broken world.
+
+## Decisions
+
+| Decision | Choice | Consequence |
 |---|---|---|
-| World model | **Reactor** (reactor.inc — LingBot World 2 / Happy Oyster) | Real-time navigable video world, seeded by era-specific images + prompts, steered via WASD/look commands |
-| GPU workloads | **Modal** | Batch ingestion, image restoration/upscaling, era classification, optional splat reconstruction |
-| Narrator | **VEED** (avatars/Fabric API) | Period "news reporter" clips triggered by location zones |
-| Frontend | Next.js + `@reactor-team/js-sdk` | Render world stream to `<video>`, controls, era slider, minimap |
-| Backend | Node/FastAPI token service | Mints short-lived Reactor session tokens (API key never reaches browser) |
-| Data | Postgres (Supabase/Neon) + S3/R2 | Photo metadata, seed-image registry, district/era graph |
+| Reactor model | **Flexible — no lock-in.** LingBot World 2 and Happy Oyster Adventure are both first-class adapters; a day-1 spike calibrates the default but does not eliminate a model | `WorldModelAdapter` registry is core architecture. Seed artifacts satisfy the strictest model's constraints so any adapter can consume them |
+| Model selection | Config default (`WORLD_MODEL`) + hidden override (`?model=`, dev-panel cookie). Not user-facing | Token route mints per requested model; cache stores per-model state side by side |
+| Photo source | Open archives first, Google Custom Search JSON API as fallback | Clean licensing by default; CSE results carry `licenseConfidence: low` |
+| Backend | **No Modal.** Single Next.js app (App Router API routes) | No GPU. "Restoration" is `sharp` crop/resize/normalize; real upscaling is a post-MVP stretch via a hosted API |
+| Infra | Vercel + Vercel Blob + Upstash Redis | Zero-ops, free tier |
 
-## Key architecture decision
+## Model flexibility — design
 
-Two ways to make a "walkable city":
+### `WorldModelAdapter` (`lib/reactor/adapter.ts`)
 
-- **Generative (Reactor)**: dreamlike, infinite, real-time, but geometry can drift on long walks. Best for atmosphere and MVP speed.
-- **Reconstruction (3D Gaussian Splatting / NeRF on Modal)**: geometrically faithful and persistent, but static and data-hungry.
+```ts
+interface ModelCapabilities {
+  id: ModelId;                               // "lingbot-world-2" | "happy-oyster-adventure" | future
+  reactorModelName: string;                  // token scope, e.g. "reactor/lingbot-world-2"
+  seedInput: "upload" | "public-url";        // how the seed reaches the model
+  seedAspect?: { min: number; max: number }; // e.g. 1.5–2.0 for Happy Oyster
+  supportsHotPrompt: boolean;                // set_prompt mid-stream
+  supportsReattach: boolean;                 // encrypted_world_id re-attach
+  driftReset: "kv-cache" | "reattach" | "reseed";
+  perspective?: "first_person" | "third_person";
+}
 
-**Recommendation**: MVP1 is generative-first (matches the stated stack). Treat splat reconstruction as a Phase-4+ hybrid for hero landmarks where drift is unacceptable, and as the caching layer for "persistent" streets.
-
-## Phases
-
-### Phase 0 — De-risking spike
-Goal: prove a Reactor session seeded with an Amsterdam photo feels like walking Amsterdam.
-
-- Scaffold with `create-reactor-app`; stand up the token-mint endpoint (server holds `REACTOR_API_KEY`, browser gets scoped JWT).
-- Pick ONE neighborhood (Jordaan or Dam Square area) and ONE era (e.g. 1968).
-- Manually curate 20–50 seed images; test world consistency, drift, session cost.
-- Deliverable: a URL where you can WASD-walk "1968 Amsterdam" for 2 minutes.
-
-### Phase 1 — Data pipeline (Modal)
-- **Ingestion** (scheduled Modal functions):
-  - Google Street View Static API + Places photos (licensed path — see Risks).
-  - Amsterdam City Archives / Beeldbank (Stadsarchief) for historical street-level photos; Mapillary as open supplementary source.
-- **Era classification**: metadata first (many archival photos are dated), vision-model dating (CLIP-style or fine-tuned classifier on Modal batch GPU) for undated images.
-- **Restoration**: upscale/de-noise archival photos (Real-ESRGAN / SUPIR) so they're usable as Reactor seed images.
-- **Geocoding**: lat/lon + camera heading per photo; build a street graph of "seed nodes" per district.
-- **Storage**: images → R2/S3; metadata → Postgres (`photos`, `districts`, `eras`, `seed_nodes` tables).
-
-### Phase 2 — World generation layer
-- **Seed registry**: per (district, era), rank and select anchor seed images.
-- **Session service**: mint Reactor tokens, manage session lifecycle, handle drift recovery (re-seed when the world diverges too far from the district).
-- **Prompt library**: per-decade prompt packs ("1960s Jordaan: trams, VW Beetles, coal smoke, Provo-era posters…") layered on the seed image.
-- **Traversal model**: for MVP, districts are discrete worlds joined by a map/teleport UI. Later: portal seams or continuous generation.
-- **VEED integration**: per-location trigger zones → pre-generated reporter clips ("Live from Dam Square, May 1970…") rendered picture-in-picture.
-
-### Phase 3 — Experience frontend (MVP1 ship)
-- Next.js app: Reactor SDK → `<video>`, WASD + look controls wired to `move`/`look` commands.
-- Era slider (1960s/70s/80s), district picker, minimap (static SVG for MVP; real GIS later).
-- VEED reporter overlay + era-appropriate ambient audio.
-
-### Phase 4+ — Post-MVP roadmap
-- Multi-era coverage; more districts → whole city.
-- GIS ingestion (PDOK / BAG building footprints, street geometry) + Google Maps data for a real navigable ground truth; align generative world to actual street layout.
-- Splat reconstruction of generated traversals → persistent, consistent streets (drift correction).
-- **Forecasting**: "Amsterdam 2035" — speculative era via prompt packs informed by policy/climate data (e.g. car-free center, sea-level adaptations), generated imagery as seeds.
-
-## Suggested repo layout (monorepo)
-
-```
-apps/
-  web/            # Next.js — Reactor client, controls, VEED overlay
-  api/            # Token service + seed/metadata API
-pipelines/
-  ingest/         # Modal functions: scraping, archival fetch
-  classify/       # Era classification, restoration (GPU)
-  recon/          # (later) splat reconstruction
-packages/
-  prompts/        # Era prompt packs
-  shared/         # Types, district/era schemas
-infra/            # DB schema, deploy config
+interface WorldModelAdapter {
+  readonly caps: ModelCapabilities;
+  connect(jwt: string): Promise<void>;
+  seed(input: { imageUrl: string; imageBlob?: Blob; prompt: string; reattachId?: string }): Promise<{ reattachId?: string }>;
+  start(): Promise<void>;
+  setMove(dir: MoveDir | null): void;        // held state; null = idle/stop
+  setLook(axis: "h" | "v", dir: LookDir | null): void;
+  reseed(next: SeedRef): Promise<void>;      // impl picks kv-reset / reattach / reset+setImage
+  dispose(): Promise<void>;
+  on(evt: "status" | "chunk" | "error", cb: (e: unknown) => void): () => void;
+}
 ```
 
-## Risks & open questions
+- **Registry** (`lib/reactor/registry.ts`): `MODELS: Record<ModelId, () => WorldModelAdapter>`; `resolveModel(req)` = `?model=` → cookie → `WORLD_MODEL` env → first registered. `ENABLED_MODELS` gates accepted ids; unknown/disabled → `400 unsupported_model`.
+- **Adding a model** = one adapter file + a registry entry + a token scope string. No UI or API changes.
+- **Seed artifacts are model-agnostic**: always a public Blob URL at 16:9 — usable as a URL (Happy Oyster) or fetched into a Blob for upload (LingBot).
+- **Cache is model-aware**: `world:{citySlug}:{decade}` holds shared payload (seed, alternates, prompt); `world:{citySlug}:{decade}:{modelId}` holds per-model state (e.g. `encryptedWorldId`). Switching models never re-runs sourcing.
+- **Controls are normalized**: UI emits `MoveDir`/`LookDir`; each adapter maps to its own vocabulary (`setMovement("forward")` vs `move("Front")`).
+- **Capability-driven UI**: re-seed behaviour and hot-prompt controls render from `caps`, so a missing feature degrades instead of erroring.
+
+### Reactor API notes per adapter
+
+**LingBot World 2** (`@reactor-models/lingbot-world-2`): `connect(jwt)` → `uploadFile(blob)` → `setImage` → `setPrompt` → `start`. Held-state `setMovement` / `setLookHorizontal` / `setLookVertical` / `setRotationSpeedDeg`; commands land at the next chunk (~1.4s); errors arrive as `command_error` events. Drift: `triggerKvCacheReset()`, `setAttnWindow`. Re-seed = `reset()` → `setImage` → `start()`.
+
+**Happy Oyster Adventure** (`@reactor-models/happy-oyster`): `connect(jwt)` → `createWorld({prompt, first_frame_image_url, perspective: "first_person"})` → `startTravel()`; returns `encrypted_world_id` for instant `attachWorld()` later. `move("Front"|…)`, `look("Mouse_Left"|…)`, `stop()`. Seed must be a public URL, landscape, aspect 1.5–2.0. Token scope `reactor/happy-oyster-adventure`.
+
+**Both**: tokens from `POST https://api.reactor.inc/tokens` with `authorization_details[].resources.models.match` + `constraints.max_sessions`; JWT ≤ 6h; mint per model; API key never reaches the browser.
+
+## Architecture
+
+```
+apps/web (Next.js 15, App Router, TS)
+  app/
+    page.tsx                      landing: city input + decade select
+    world/page.tsx                experience: <video> + controls + HUD (+ dev panel behind ?dev=1)
+    api/world/route.ts            POST {city, decade, model?} → WorldPayload (NDJSON progress stream)
+    api/world/cache/route.ts      PATCH {city, decade, model, state} → per-model state (e.g. encryptedWorldId)
+    api/reactor/token/route.ts    POST {model} → JWT scoped to that model
+  lib/
+    types.ts                      WorldPayload, SeedCandidate, ErrorCode, ModelId, ModelCapabilities
+    geocode.ts                    Nominatim → {canonicalName, countryCode, bbox, lat, lon}
+    sources/                      SeedSource interface + wikimedia.ts, europeana.ts, flickrCommons.ts, googleCse.ts
+    ranking.ts                    score + threshold + insufficiency
+    image.ts                      sharp: fetch, validate, smart-crop 16:9, resize 1280x720, JPEG, Blob upload
+    prompts/                      decades/1900s…2020s.json + compose(city, country, decade, seed, caps)
+    cache.ts                      Upstash Redis: shared + per-model keys
+    reactor/
+      adapter.ts                  interface + capabilities
+      registry.ts                 MODELS map + resolveModel()
+      lingbot.ts, happyOyster.ts  implementations
+      controls.ts                 normalized MoveDir/LookDir + per-model mapping tables
+docs/
+  api-contract.md, adr/001-world-models.md, adding-a-model.md
+scripts/                          GitHub issue automation
+```
+
+**Secrets**: `REACTOR_API_KEY`, `GOOGLE_CSE_KEY`, `GOOGLE_CSE_CX`, `EUROPEANA_KEY`, `FLICKR_KEY`, `BLOB_READ_WRITE_TOKEN`, `UPSTASH_*`.
+**Config**: `WORLD_MODEL` (default model id), `ENABLED_MODELS` (comma list), `MOCK_WORLD=1` (dev mock).
+
+### `POST /api/world` contract
+
+```jsonc
+// request
+{ "city": "Amsterdam", "decade": 1960, "model": "happy-oyster-adventure" }   // model optional
+
+// 200 — final NDJSON line; earlier lines are {stage, detail}
+{
+  "model": { "id": "happy-oyster-adventure", "reactorModelName": "reactor/happy-oyster-adventure",
+             "caps": { "seedInput": "public-url", "supportsReattach": true, "driftReset": "reattach", "supportsHotPrompt": false } },
+  "sessionToken": "<jwt scoped to model>",
+  "seed": { "url": "https://blob/.../amsterdam-1960-a1.jpg", "thumbUrl": "...", "source": "wikimedia", "year": 1967,
+            "title": "...", "author": "...", "license": "CC BY-SA 3.0", "sourceUrl": "...", "licenseConfidence": "high" },
+  "alternates": [ /* ≤3 seed objects for re-seed rotation */ ],
+  "prompt": "Amsterdam, Netherlands, 1960s: ...",
+  "modelState": { "encryptedWorldId": "..." },     // per-model, null on miss
+  "meta": { "canonicalCity": "Amsterdam, Netherlands", "cacheHit": false, "sourcingMs": 4120 }
+}
+
+// errors — JSON {error, message, closestDecade?}
+400 invalid_city | 400 unsupported_decade | 400 unsupported_model
+404 insufficient_archival_photos | 429 rate_limited | 502 upstream_failed
+```
+
+### Orchestration
+
+1. Validate + normalize; `resolveModel()`; rate-limit 10/min/IP
+2. Shared cache lookup → on hit load per-model state, mint token, return (≤ 2s)
+3. Geocode (cached 30d)
+4. Sources in parallel (6s timeout each, error-isolated); `< MIN_CANDIDATES (5)` → Google CSE; `< 1` → 404
+5. Rank → top 4 → normalize → Blob
+6. Compose prompt (consults `caps`) → mint token → write cache → return
+
+Budget: ≤ 25s cold, ≤ 2s warm.
+
+## Tickets — 2 hackers
+
+GitHub issues **#34–#52**, labels `mvp1` + `hacker-a` / `hacker-b` / `integration`; `day-0` marks the tickets that unblock parallel work.
+
+| Day 0–1 (both) | Hacker A — Experience | Hacker B — World data | Final (both) |
+|---|---|---|---|
+| #34 I1 scaffold + contract + mock | #37 A1 landing form | #43 B1 Nominatim geocoder | #51 I4 E2E + demo matrix (both models) |
+| #35 I2 token route + registry | #38 A2 adapter + both impls | #44 B2 SeedSource + Wikimedia | #52 I5 hardening + deploy |
+| #36 I3 calibration spike (3h, pair) | #39 A3 video + WASD/pointer-lock | #45 B3 Europeana + Flickr Commons | |
+| | #40 A4 session state machine | #46 B4 Google CSE fallback | |
+| | #41 A5 progress UX + dev panel | #47 B5 ranking + insufficiency | |
+| | #42 A6 HUD + capability-aware actions | #48 B6 image normalization + Blob | |
+| | | #49 B7 orchestrator + cache + streaming | |
+| | | #50 B8 prompt composer + decade packs | |
+
+### Dependency graph
+
+```
+I1 ─┬─ A1 ─ A4 ─ A5 ─ A6
+    ├─ A2 ─ A3 ─┘
+    ├─ B1 ─ B2 ─ B3 ─ B4 ─ B5 ─ B7 ─ I4 ─ I5
+    │              B6 ──┘     B8 ─┘
+I2 ─┴─ I3 (needs I2 + stub adapters)
+```
+
+A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry --city Amsterdam --decade 1960` until A1 lands.
+
+## Verification
+
+- `pnpm typecheck && pnpm lint && pnpm test` green in CI
+- Unit: geocoder fixtures; each `SeedSource` against recorded HTTP fixtures; ranking golden tests; prompt composer per-model limits; token route never leaks the key and rejects disabled/unknown models
+- Adapter contract tests pass for LingBot, Happy Oyster, and the fake adapter
+- Integration: Amsterdam/1960 cold ≤ 25s, warm ≤ 2s; Lagos/1950 → 404 with `closestDecade`; `?model=` switches token scope and adapter without re-sourcing
+- E2E (Playwright, fake adapter): landing → walking; distinct error UIs
+- Manual: both real adapters respond to WASD; re-seed works per model; teardown leaves no dangling sessions
+- Licensing: every seed shows credit + license; CSE seeds carry a low-confidence badge
+
+## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Google imagery ToS — scraping Photos/Street View violates terms | Use official APIs (Street View Static, Places) or licensed/open sources (Stadsarchief, Mapillary). Budget for API costs. |
-| World drift on long walks | Session re-seeding, bounded "district" worlds with teleport between them, splat anchoring later |
-| Sparse 1960s street-level photos | Lean on Stadsarchief Beeldbank; generative fill where data is thin; accept lower fidelity for old eras |
-| Per-session real-time generation cost | Measure in Phase 0; consider session pooling, pre-baked loops for free tier |
-| VEED API latency/limits | Pre-generate clips per trigger zone rather than live generation |
+| Photo scarcity for non-Western / pre-1950 pairs | 404 with `closestDecade` hint; rank resolution heavily |
+| Happy Oyster aspect constraint (1.5–2.0) | B6 always outputs 16:9; portrait ranked down hard |
+| No GPU restoration | Feature-flagged hosted upscaler as a stretch; no Modal required |
+| Model SDK divergence | Adapter contract tests; `ENABLED_MODELS` kill-switch without a code deploy |
+| Reactor session cost | `max_sessions` on tokens; `dispose()` discipline; measured in I3 |
+| Nominatim policy / Google CSE quota | Aggressive caching; CSE fallback-only with logging |
+| World drift on long walks | Per-model `driftReset` via the adapter (`triggerKvCacheReset`, re-attach, or reset+reseed) |
 
-## How to evaluate quality
+## Post-MVP roadmap (`roadmap` issues #1–#18)
 
-- Side-by-side: generated frame vs. real archival photo of the same spot.
-- Consistency check: walk a loop — does the street return to where it started?
-- Era plausibility: domain-expert or user-test pass per decade.
+Not part of MVP1. Kept for direction:
+
+- **Modal GPU pipelines**: bulk ingestion, era classification for undated photos, Real-ESRGAN/SUPIR restoration, splat reconstruction
+- **VEED narrator**: period "news reporter" clips triggered by location zones
+- **GIS alignment**: PDOK/BAG footprints + street geometry; real minimap; align generated world to actual street layout
+- **Persistence**: 3D Gaussian Splat reconstruction of generated traversals for consistent, revisitable streets
+- **Forecasting**: speculative future decades ("Amsterdam 2035") from policy/climate-informed prompt packs and generated seed imagery
+- **Additional Reactor models**: Helios / H3 for non-navigable "postcard" mode via the same adapter registry
