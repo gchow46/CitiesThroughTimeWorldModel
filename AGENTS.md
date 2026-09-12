@@ -62,5 +62,13 @@ Flickr/CSE sources, ranking, sharp normalization + blob store, decade prompt
 packs, `/api/world` orchestrator with NDJSON progress + model-aware cache,
 `PATCH /api/world/cache`, `pnpm seed:dry`. Modal restore service scaffolded
 under `services/restore` (optional — `RESTORE_ENDPOINT` unset = sharp-only).
-Remaining: Hacker-A experience tickets + I3 calibration spike.
+Remaining: completion of Hacker-A HUD actions, live model verification + I3 calibration spike.
+
+### Integrated frontend
+
+- Landing `/` and `/world` share an in-memory provider; tokens are never placed in URLs or browser storage. The browser adapters live in `apps/web/lib/reactor/client/`, separately from the server registry/stubs used by token minting and the backend pipeline. Do not import that server registry into client components.
+- Preserve `apps/web/lib/types.ts` as the backend contract. `lib/frontend-types.ts` imports its model IDs, capabilities and decade bounds and adds normalized presentation types; missing optional seed metadata is displayed honestly rather than rejecting a valid backend payload.
+- The frontend consumes NDJSON progress/final error lines and JSON fallback. Token refresh uses `{token, model, expiresAt}` from `/api/reactor/token`; the hidden `?dev=1` switcher uses the backend's `ctt_model` cookie. `?model=` continues to select a requested engine subject to backend validation.
+- For a backend-connected smoke test, run `MOCK_WORLD=1 pnpm dev` in Git Bash (PowerShell: set `$env:MOCK_WORLD='1'`, then `pnpm dev`). The frontend recognizes the backend's mock-token format in development or explicit preview builds and labels it as a backend mock, never a live world. The local UI preview button bypasses the backend entirely. Neither mode validates real Reactor generation.
+- Run root `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`; `pnpm --filter web e2e` runs Playwright against a mock-configured backend. Install Chromium first with `pnpm --filter web exec playwright install chromium`. Keep the root workspace/lockfile and the backend Vitest suite; do not introduce a nested app lockfile or replace the backend's test script.
 Roadmap items (bulk Modal pipelines, VEED narrator, GIS, splats, forecasting) are issues #1–#18 tagged `roadmap`.
