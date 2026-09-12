@@ -1,16 +1,20 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "./route";
 import { MODEL_IDS, type WorldPayload } from "@/lib/types";
+import { resetMemoryCache } from "@/lib/cache";
 
 const ENV_KEYS = ["MOCK_WORLD", "ENABLED_MODELS", "WORLD_MODEL"] as const;
 const saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+
+beforeEach(() => resetMemoryCache());
 
 afterEach(() => {
   for (const k of ENV_KEYS) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
+  vi.unstubAllGlobals();
 });
 
 function req(body: unknown, url = "http://localhost/api/world") {
@@ -89,10 +93,13 @@ describe("POST /api/world (mock)", () => {
     }
   });
 
-  it("501 not_implemented when MOCK_WORLD is unset", async () => {
+  it("streams a status-carrying error line when the real pipeline fails", async () => {
     delete process.env.MOCK_WORLD;
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
     const res = await POST(req({ city: "Amsterdam", decade: 1960 }));
-    expect(res.status).toBe(501);
-    expect((await res.json()).error).toBe("not_implemented");
+    expect(res.status).toBe(200); // status committed before streaming
+    const last = (await readNdjson(res)).at(-1);
+    expect(last.error).toBe("upstream_failed");
+    expect(last.status).toBe(502);
   });
 });

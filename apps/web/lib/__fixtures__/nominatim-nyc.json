@@ -1,0 +1,12 @@
+[
+  {
+    "display_name": "New York, United States",
+    "lat": "40.7127281",
+    "lon": "-74.0060152",
+    "boundingbox": ["40.4774", "40.9176", "-74.2591", "-73.7002"],
+    "importance": 0.9,
+    "type": "city",
+    "class": "place",
+    "address": { "country_code": "us" }
+  }
+]

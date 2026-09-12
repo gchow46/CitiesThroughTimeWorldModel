@@ -56,4 +56,11 @@ GH_TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill | 
 
 ## Status
 
-Plan approved; tickets #34–#53 open. Roadmap items (bulk Modal pipelines, VEED narrator, GIS, splats, forecasting) are issues #1–#18 tagged `roadmap`.
+Day-0 foundation landed (scaffold, contract, registry, token route, mocks).
+Hacker-B world-data pipeline implemented: geocoder, Wikimedia/Europeana/
+Flickr/CSE sources, ranking, sharp normalization + blob store, decade prompt
+packs, `/api/world` orchestrator with NDJSON progress + model-aware cache,
+`PATCH /api/world/cache`, `pnpm seed:dry`. Modal restore service scaffolded
+under `services/restore` (optional — `RESTORE_ENDPOINT` unset = sharp-only).
+Remaining: Hacker-A experience tickets + I3 calibration spike.
+Roadmap items (bulk Modal pipelines, VEED narrator, GIS, splats, forecasting) are issues #1–#18 tagged `roadmap`.

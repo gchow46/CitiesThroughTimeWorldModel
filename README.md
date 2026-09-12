@@ -18,13 +18,13 @@ city + decade
 
 ## Stack
 
-| | |
-|---|---|
-| App | Next.js — UI and API routes in one codebase |
+|             |                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------ |
+| App         | Next.js — UI and API routes in one codebase                                                                  |
 | World model | Reactor, behind a pluggable adapter (LingBot World 2 and Happy Oyster both supported; default set by config) |
-| Photos | Open archives first, Google Custom Search only as fallback |
-| Storage | Vercel Blob (images), Upstash Redis (cache) |
-| GPU | Modal — optional restoration of old scans; the app runs without it |
+| Photos      | Open archives first, Google Custom Search only as fallback                                                   |
+| Storage     | Vercel Blob (images), Upstash Redis (cache)                                                                  |
+| GPU         | Modal — optional restoration of old scans; the app runs without it                                           |
 
 ## Principles
 

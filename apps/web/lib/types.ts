@@ -94,6 +94,7 @@ export interface ProgressEvent {
 // ---------- errors ----------
 
 export type ErrorCode =
+  | "bad_request"
   | "invalid_city"
   | "unsupported_decade"
   | "unsupported_model"

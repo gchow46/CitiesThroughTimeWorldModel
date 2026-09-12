@@ -1,0 +1,22 @@
+[
+  {
+    "display_name": "Amsterdam, North Holland, Netherlands",
+    "lat": "52.3727598",
+    "lon": "4.8936041",
+    "boundingbox": ["52.2515", "52.5054", "4.7290", "5.0683"],
+    "importance": 0.8,
+    "type": "city",
+    "class": "place",
+    "address": { "country_code": "nl" }
+  },
+  {
+    "display_name": "Amsterdam, New York, United States",
+    "lat": "42.9387",
+    "lon": "-74.1882",
+    "boundingbox": ["42.90", "42.98", "-74.22", "-74.15"],
+    "importance": 0.4,
+    "type": "city",
+    "class": "place",
+    "address": { "country_code": "us" }
+  }
+]

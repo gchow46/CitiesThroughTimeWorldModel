@@ -1,0 +1,116 @@
+{
+  "query": {
+    "pages": {
+      "1": {
+        "title": "File:Damrak 1967.jpg",
+        "categories": [{ "title": "Category:Streets in Amsterdam" }],
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Damrak_1967.jpg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Damrak_1967.jpg",
+            "width": 2400,
+            "height": 1400,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1967-05-12" },
+              "LicenseShortName": { "value": "CC BY-SA 3.0" },
+              "Artist": { "value": "<a href='#'>J. de Vries</a>" },
+              "ImageDescription": { "value": "Damrak street with trams" }
+            }
+          }
+        ]
+      },
+      "2": {
+        "title": "File:Map of canals.png",
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Map_canals.png",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Map_canals.png",
+            "width": 2000,
+            "height": 1500,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1965" },
+              "LicenseShortName": { "value": "Public domain" },
+              "ImageDescription": { "value": "Map of Amsterdam canals" }
+            }
+          }
+        ]
+      },
+      "3": {
+        "title": "File:Portrait 1968.jpg",
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Portrait_1968.jpg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Portrait_1968.jpg",
+            "width": 900,
+            "height": 1400,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1968" },
+              "LicenseShortName": { "value": "CC BY-SA 4.0" },
+              "ImageDescription": { "value": "Portrait of a baker" }
+            }
+          }
+        ]
+      },
+      "4": {
+        "title": "File:NC licensed photo.jpg",
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Nc.jpg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Nc.jpg",
+            "width": 1600,
+            "height": 900,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1964" },
+              "LicenseShortName": { "value": "CC BY-NC 3.0" },
+              "ImageDescription": { "value": "Street scene NC" }
+            }
+          }
+        ]
+      },
+      "5": {
+        "title": "File:Tiny.jpg",
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Tiny.jpg",
+            "width": 400,
+            "height": 300,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1962" },
+              "LicenseShortName": { "value": "CC BY 2.0" }
+            }
+          }
+        ]
+      },
+      "6": {
+        "title": "File:Wrong decade.jpg",
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Wrong.jpg",
+            "width": 1600,
+            "height": 900,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1995" },
+              "LicenseShortName": { "value": "CC BY-SA 3.0" }
+            }
+          }
+        ]
+      },
+      "7": {
+        "title": "File:Herengracht 1963.jpg",
+        "imageinfo": [
+          {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/g/g7/Herengracht_1963.jpg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Herengracht_1963.jpg",
+            "width": 1800,
+            "height": 1200,
+            "extmetadata": {
+              "DateTimeOriginal": { "value": "1963" },
+              "LicenseShortName": { "value": "CC0" },
+              "ImageDescription": { "value": "Herengracht canal houses" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

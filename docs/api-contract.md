@@ -57,6 +57,12 @@ Budget: ≤ 25s cold (≤ 30s with restoration), ≤ 2s warm (shared-cache hit).
 | 502    | `upstream_failed`              | archive/blob/Reactor failure                           |
 | 501    | `not_implemented`              | real pipeline not wired yet — set `MOCK_WORLD=1`       |
 
+> **Streamed errors.** Validation, rate-limit and model-resolution failures
+> return the HTTP status above. Once the NDJSON stream has started, errors
+> arrive as the **final line** instead: `{ "status": 404, "error": "...",
+> "message": "...", "closestDecade?": ... }` — the HTTP status is already
+> committed, so clients must check the last line for an `error` field.
+
 **Model resolution** (also used by `/api/reactor/token`): `model` body field or
 `?model=` query param → `ctt_model` cookie → `WORLD_MODEL` env → first enabled
 model in the registry. `ENABLED_MODELS` (comma list) gates accepted ids.

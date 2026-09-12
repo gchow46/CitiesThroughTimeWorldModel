@@ -13,7 +13,7 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
-  { ignores: ["node_modules/", ".next/", "coverage/"] },
+  { ignores: ["node_modules/", ".next/", "coverage/", "next-env.d.ts"] },
 ];
 
 export default eslintConfig;
