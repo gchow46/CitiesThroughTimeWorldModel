@@ -14,7 +14,7 @@ Long-term the project roads toward multi-era coverage, GIS-aligned geometry, and
 1. User submits `{city, decade}` → `POST /api/world`
 2. Backend geocodes the city (Nominatim) → canonical name + bounding box
 3. Seed pipeline queries open archives (Wikimedia Commons, Europeana, Flickr Commons) for photos matching (bbox/city, decade, open license); falls back to Google Custom Search if too few candidates
-4. Candidates are ranked, the top ones smart-cropped to 16:9 and uploaded to blob storage
+4. Candidates are ranked; the top ones are upscaled/denoised on Modal (GPU), smart-cropped to 16:9 and uploaded to blob storage
 5. Prompt composer renders a `city × decade` prompt
 6. API mints a Reactor token scoped to the selected model and returns `{model, sessionToken, seed, alternates, prompt, modelState}`
 7. Browser opens the session via the model's adapter and the user walks; re-seed on drift
@@ -28,8 +28,9 @@ Unsupported (city, decade) pairs return a graceful `insufficient_archival_photos
 | Reactor model | **Flexible — no lock-in.** LingBot World 2 and Happy Oyster Adventure are both first-class adapters; a day-1 spike calibrates the default but does not eliminate a model | `WorldModelAdapter` registry is core architecture. Seed artifacts satisfy the strictest model's constraints so any adapter can consume them |
 | Model selection | Config default (`WORLD_MODEL`) + hidden override (`?model=`, dev-panel cookie). Not user-facing | Token route mints per requested model; cache stores per-model state side by side |
 | Photo source | Open archives first, Google Custom Search JSON API as fallback | Clean licensing by default; CSE results carry `licenseConfidence: low` |
-| Backend | **No Modal.** Single Next.js app (App Router API routes) | No GPU. "Restoration" is `sharp` crop/resize/normalize; real upscaling is a post-MVP stretch via a hosted API |
-| Infra | Vercel + Vercel Blob + Upstash Redis | Zero-ops, free tier |
+| Backend | Single Next.js app (App Router API routes) orchestrates everything | One codebase for both hackers; no separate API service |
+| Modal | **GPU restoration only** — a Modal web endpoint running Real-ESRGAN upscales/denoises chosen seed photos | Next.js calls it from the image step; `sharp`-only fallback on any failure so Modal is never on the critical failure path |
+| Infra | Vercel + Vercel Blob + Upstash Redis + Modal | Zero-ops; Modal scales to zero outside demos |
 
 ## Model flexibility — design
 
@@ -90,7 +91,7 @@ apps/web (Next.js 15, App Router, TS)
     geocode.ts                    Nominatim → {canonicalName, countryCode, bbox, lat, lon}
     sources/                      SeedSource interface + wikimedia.ts, europeana.ts, flickrCommons.ts, googleCse.ts
     ranking.ts                    score + threshold + insufficiency
-    image.ts                      sharp: fetch, validate, smart-crop 16:9, resize 1280x720, JPEG, Blob upload
+    image.ts                      fetch, validate → Modal restore (optional) → sharp smart-crop 16:9, 1280x720 JPEG → Blob
     prompts/                      decades/1900s…2020s.json + compose(city, country, decade, seed, caps)
     cache.ts                      Upstash Redis: shared + per-model keys
     reactor/
@@ -98,13 +99,16 @@ apps/web (Next.js 15, App Router, TS)
       registry.ts                 MODELS map + resolveModel()
       lingbot.ts, happyOyster.ts  implementations
       controls.ts                 normalized MoveDir/LookDir + per-model mapping tables
+services/restore (Modal, Python)
+  app.py                        @modal.web_endpoint POST {imageUrl, targetWidth} → {restoredUrl, ms}; Real-ESRGAN on A10G
+  smoke.py                      modal run smoke test
 docs/
   api-contract.md, adr/001-world-models.md, adding-a-model.md
 scripts/                          GitHub issue automation
 ```
 
-**Secrets**: `REACTOR_API_KEY`, `GOOGLE_CSE_KEY`, `GOOGLE_CSE_CX`, `EUROPEANA_KEY`, `FLICKR_KEY`, `BLOB_READ_WRITE_TOKEN`, `UPSTASH_*`.
-**Config**: `WORLD_MODEL` (default model id), `ENABLED_MODELS` (comma list), `MOCK_WORLD=1` (dev mock).
+**Secrets**: `REACTOR_API_KEY`, `GOOGLE_CSE_KEY`, `GOOGLE_CSE_CX`, `EUROPEANA_KEY`, `FLICKR_KEY`, `BLOB_READ_WRITE_TOKEN`, `UPSTASH_*`, `RESTORE_KEY` (shared with Modal).
+**Config**: `WORLD_MODEL` (default model id), `ENABLED_MODELS` (comma list), `RESTORE_ENDPOINT` (Modal URL; unset = sharp-only), `MOCK_WORLD=1` (dev mock).
 
 ### `POST /api/world` contract
 
@@ -118,7 +122,8 @@ scripts/                          GitHub issue automation
              "caps": { "seedInput": "public-url", "supportsReattach": true, "driftReset": "reattach", "supportsHotPrompt": false } },
   "sessionToken": "<jwt scoped to model>",
   "seed": { "url": "https://blob/.../amsterdam-1960-a1.jpg", "thumbUrl": "...", "source": "wikimedia", "year": 1967,
-            "title": "...", "author": "...", "license": "CC BY-SA 3.0", "sourceUrl": "...", "licenseConfidence": "high" },
+            "title": "...", "author": "...", "license": "CC BY-SA 3.0", "sourceUrl": "...", "licenseConfidence": "high",
+            "restored": true },
   "alternates": [ /* ≤3 seed objects for re-seed rotation */ ],
   "prompt": "Amsterdam, Netherlands, 1960s: ...",
   "modelState": { "encryptedWorldId": "..." },     // per-model, null on miss
@@ -136,14 +141,14 @@ scripts/                          GitHub issue automation
 2. Shared cache lookup → on hit load per-model state, mint token, return (≤ 2s)
 3. Geocode (cached 30d)
 4. Sources in parallel (6s timeout each, error-isolated); `< MIN_CANDIDATES (5)` → Google CSE; `< 1` → 404
-5. Rank → top 4 → normalize → Blob
+5. Rank → top 4 → restore on Modal (parallel, 10s timeout, sharp-only fallback) → normalize → Blob
 6. Compose prompt (consults `caps`) → mint token → write cache → return
 
-Budget: ≤ 25s cold, ≤ 2s warm.
+Budget: ≤ 30s cold (incl. restoration), ≤ 2s warm.
 
 ## Tickets — 2 hackers
 
-GitHub issues **#34–#52**, labels `mvp1` + `hacker-a` / `hacker-b` / `integration`; `day-0` marks the tickets that unblock parallel work.
+GitHub issues **#34–#53**, labels `mvp1` + `hacker-a` / `hacker-b` / `integration`; `day-0` marks the tickets that unblock parallel work.
 
 | Day 0–1 (both) | Hacker A — Experience | Hacker B — World data | Final (both) |
 |---|---|---|---|
@@ -152,9 +157,10 @@ GitHub issues **#34–#52**, labels `mvp1` + `hacker-a` / `hacker-b` / `integrat
 | #36 I3 calibration spike (3h, pair) | #39 A3 video + WASD/pointer-lock | #45 B3 Europeana + Flickr Commons | |
 | | #40 A4 session state machine | #46 B4 Google CSE fallback | |
 | | #41 A5 progress UX + dev panel | #47 B5 ranking + insufficiency | |
-| | #42 A6 HUD + capability-aware actions | #48 B6 image normalization + Blob | |
+| | #42 A6 HUD + capability-aware actions | #48 B6 image normalization + Blob (calls B9) | |
 | | | #49 B7 orchestrator + cache + streaming | |
 | | | #50 B8 prompt composer + decade packs | |
+| | | #53 B9 Modal GPU restoration endpoint | |
 
 ### Dependency graph
 
@@ -162,9 +168,11 @@ GitHub issues **#34–#52**, labels `mvp1` + `hacker-a` / `hacker-b` / `integrat
 I1 ─┬─ A1 ─ A4 ─ A5 ─ A6
     ├─ A2 ─ A3 ─┘
     ├─ B1 ─ B2 ─ B3 ─ B4 ─ B5 ─ B7 ─ I4 ─ I5
-    │              B6 ──┘     B8 ─┘
+    │        B9 ─ B6 ──┘     B8 ─┘
 I2 ─┴─ I3 (needs I2 + stub adapters)
 ```
+
+B9 is a soft dependency of B6: the `sharp`-only path must work with `RESTORE_ENDPOINT` unset, so B6 can land first and B9 slot in behind it.
 
 A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry --city Amsterdam --decade 1960` until A1 lands.
 
@@ -173,7 +181,8 @@ A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry
 - `pnpm typecheck && pnpm lint && pnpm test` green in CI
 - Unit: geocoder fixtures; each `SeedSource` against recorded HTTP fixtures; ranking golden tests; prompt composer per-model limits; token route never leaks the key and rejects disabled/unknown models
 - Adapter contract tests pass for LingBot, Happy Oyster, and the fake adapter
-- Integration: Amsterdam/1960 cold ≤ 25s, warm ≤ 2s; Lagos/1950 → 404 with `closestDecade`; `?model=` switches token scope and adapter without re-sourcing
+- Integration: Amsterdam/1960 cold ≤ 30s, warm ≤ 2s; Lagos/1950 → 404 with `closestDecade`; `?model=` switches token scope and adapter without re-sourcing
+- Modal: `modal run services/restore/smoke.py` returns a sharper 1280×720 from a 1920s scan than sharp-only; `/api/world` still succeeds with `RESTORE_ENDPOINT` unset or the endpoint down (`seed.restored: false`)
 - E2E (Playwright, fake adapter): landing → walking; distinct error UIs
 - Manual: both real adapters respond to WASD; re-seed works per model; teardown leaves no dangling sessions
 - Licensing: every seed shows credit + license; CSE seeds carry a low-confidence badge
@@ -184,7 +193,8 @@ A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry
 |---|---|
 | Photo scarcity for non-Western / pre-1950 pairs | 404 with `closestDecade` hint; rank resolution heavily |
 | Happy Oyster aspect constraint (1.5–2.0) | B6 always outputs 16:9; portrait ranked down hard |
-| No GPU restoration | Feature-flagged hosted upscaler as a stretch; no Modal required |
+| Modal cold starts / outages add latency or fail | 10s timeout + `sharp`-only fallback; `keep_warm=1` during demos; restoration results content-addressed so repeats are free |
+| GPU spend | Restore only the top 4 candidates, only when below target width or flagged as a scan; Modal spend alert in I5 |
 | Model SDK divergence | Adapter contract tests; `ENABLED_MODELS` kill-switch without a code deploy |
 | Reactor session cost | `max_sessions` on tokens; `dispose()` discipline; measured in I3 |
 | Nominatim policy / Google CSE quota | Aggressive caching; CSE fallback-only with logging |
@@ -194,7 +204,7 @@ A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry
 
 Not part of MVP1. Kept for direction:
 
-- **Modal GPU pipelines**: bulk ingestion, era classification for undated photos, Real-ESRGAN/SUPIR restoration, splat reconstruction
+- **More Modal GPU work**: bulk ingestion, era classification for undated photos (vision model feeding the ranker), SUPIR-grade restoration, splat reconstruction
 - **VEED narrator**: period "news reporter" clips triggered by location zones
 - **GIS alignment**: PDOK/BAG footprints + street geometry; real minimap; align generated world to actual street layout
 - **Persistence**: 3D Gaussian Splat reconstruction of generated traversals for consistent, revisitable streets
