@@ -43,3 +43,43 @@ Two people, ~1 week. Day 1 is shared (scaffold, API contract, token route, a sho
 Meet at E2E and deploy. Tickets: [`mvp1` issues](https://github.com/gchow46/CitiesThroughTimeWorldModel/issues?q=is%3Aissue+label%3Amvp1). Future work (VEED narrator, GIS alignment, splats, forecasting) is tagged `roadmap`.
 
 Full detail: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+## Dev quickstart
+
+```bash
+pnpm install
+cp .env.example apps/web/.env.local   # MOCK_WORLD=1 is all you need
+pnpm dev                              # http://localhost:3000
+```
+
+Hit the mock (works for every registered model):
+
+```bash
+curl -N -X POST localhost:3000/api/world \
+  -H 'content-type: application/json' \
+  -d '{"city":"Amsterdam","decade":1960,"model":"happy-oyster-adventure"}'
+```
+
+## Layout
+
+```
+apps/web        Next.js 15 app — UI + API routes (the only service for MVP1)
+  lib/types.ts      API contract: WorldPayload, SeedCandidate, ErrorCode, …
+  lib/reactor/      WorldModelAdapter interface, model registry, stub adapters
+docs/           api-contract.md, adr/001-world-models.md
+scripts/        GitHub issue automation
+services/       (B9, optional) Modal GPU restoration
+```
+
+## Checks
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test
+```
+
+## Rules of the road
+
+- `REACTOR_API_KEY` is server-only — browsers get short-lived JWTs from
+  `POST /api/reactor/token`, scoped per model (`max_sessions: 2`).
+- Models are pluggable via `lib/reactor/registry.ts`; `ENABLED_MODELS` gates ids.
+- Seed artifacts are model-agnostic: public blob URL, always 16:9.

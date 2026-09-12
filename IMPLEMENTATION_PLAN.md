@@ -23,14 +23,14 @@ Unsupported (city, decade) pairs return a graceful `insufficient_archival_photos
 
 ## Decisions
 
-| Decision | Choice | Consequence |
-|---|---|---|
-| Reactor model | **Flexible — no lock-in.** LingBot World 2 and Happy Oyster Adventure are both first-class adapters; a day-1 spike calibrates the default but does not eliminate a model | `WorldModelAdapter` registry is core architecture. Seed artifacts satisfy the strictest model's constraints so any adapter can consume them |
-| Model selection | Config default (`WORLD_MODEL`) + hidden override (`?model=`, dev-panel cookie). Not user-facing | Token route mints per requested model; cache stores per-model state side by side |
-| Photo source | Open archives first, Google Custom Search JSON API as fallback | Clean licensing by default; CSE results carry `licenseConfidence: low` |
-| Backend | Single Next.js app (App Router API routes) orchestrates everything | One codebase for both hackers; no separate API service |
-| Modal | **Optional, GPU restoration only** — a Modal web endpoint running Real-ESRGAN upscales/denoises chosen seed photos | MVP1 ships and demos with `RESTORE_ENDPOINT` unset. When set, Next.js calls it from the image step with a `sharp`-only fallback, so Modal is never on the critical failure path |
-| Infra | Vercel + Vercel Blob + Upstash Redis (+ Modal, optional) | Zero-ops; Modal scales to zero outside demos |
+| Decision        | Choice                                                                                                                                                                   | Consequence                                                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reactor model   | **Flexible — no lock-in.** LingBot World 2 and Happy Oyster Adventure are both first-class adapters; a day-1 spike calibrates the default but does not eliminate a model | `WorldModelAdapter` registry is core architecture. Seed artifacts satisfy the strictest model's constraints so any adapter can consume them                                     |
+| Model selection | Config default (`WORLD_MODEL`) + hidden override (`?model=`, dev-panel cookie). Not user-facing                                                                          | Token route mints per requested model; cache stores per-model state side by side                                                                                                |
+| Photo source    | Open archives first, Google Custom Search JSON API as fallback                                                                                                           | Clean licensing by default; CSE results carry `licenseConfidence: low`                                                                                                          |
+| Backend         | Single Next.js app (App Router API routes) orchestrates everything                                                                                                       | One codebase for both hackers; no separate API service                                                                                                                          |
+| Modal           | **Optional, GPU restoration only** — a Modal web endpoint running Real-ESRGAN upscales/denoises chosen seed photos                                                       | MVP1 ships and demos with `RESTORE_ENDPOINT` unset. When set, Next.js calls it from the image step with a `sharp`-only fallback, so Modal is never on the critical failure path |
+| Infra           | Vercel + Vercel Blob + Upstash Redis (+ Modal, optional)                                                                                                                 | Zero-ops; Modal scales to zero outside demos                                                                                                                                    |
 
 ## Model flexibility — design
 
@@ -38,12 +38,12 @@ Unsupported (city, decade) pairs return a graceful `insufficient_archival_photos
 
 ```ts
 interface ModelCapabilities {
-  id: ModelId;                               // "lingbot-world-2" | "happy-oyster-adventure" | future
-  reactorModelName: string;                  // token scope, e.g. "reactor/lingbot-world-2"
-  seedInput: "upload" | "public-url";        // how the seed reaches the model
+  id: ModelId; // "lingbot-world-2" | "happy-oyster-adventure" | future
+  reactorModelName: string; // token scope, e.g. "reactor/lingbot-world-2"
+  seedInput: "upload" | "public-url"; // how the seed reaches the model
   seedAspect?: { min: number; max: number }; // e.g. 1.5–2.0 for Happy Oyster
-  supportsHotPrompt: boolean;                // set_prompt mid-stream
-  supportsReattach: boolean;                 // encrypted_world_id re-attach
+  supportsHotPrompt: boolean; // set_prompt mid-stream
+  supportsReattach: boolean; // encrypted_world_id re-attach
   driftReset: "kv-cache" | "reattach" | "reseed";
   perspective?: "first_person" | "third_person";
 }
@@ -51,11 +51,16 @@ interface ModelCapabilities {
 interface WorldModelAdapter {
   readonly caps: ModelCapabilities;
   connect(jwt: string): Promise<void>;
-  seed(input: { imageUrl: string; imageBlob?: Blob; prompt: string; reattachId?: string }): Promise<{ reattachId?: string }>;
+  seed(input: {
+    imageUrl: string;
+    imageBlob?: Blob;
+    prompt: string;
+    reattachId?: string;
+  }): Promise<{ reattachId?: string }>;
   start(): Promise<void>;
-  setMove(dir: MoveDir | null): void;        // held state; null = idle/stop
+  setMove(dir: MoveDir | null): void; // held state; null = idle/stop
   setLook(axis: "h" | "v", dir: LookDir | null): void;
-  reseed(next: SeedRef): Promise<void>;      // impl picks kv-reset / reattach / reset+setImage
+  reseed(next: SeedRef): Promise<void>; // impl picks kv-reset / reattach / reset+setImage
   dispose(): Promise<void>;
   on(evt: "status" | "chunk" | "error", cb: (e: unknown) => void): () => void;
 }
@@ -150,17 +155,17 @@ Budget: ≤ 25s cold (≤ 30s with restoration on), ≤ 2s warm.
 
 GitHub issues **#34–#53**, labels `mvp1` + `hacker-a` / `hacker-b` / `integration`; `day-0` marks the tickets that unblock parallel work.
 
-| Day 0–1 (both) | Hacker A — Experience | Hacker B — World data | Final (both) |
-|---|---|---|---|
-| #34 I1 scaffold + contract + mock | #37 A1 landing form | #43 B1 Nominatim geocoder | #51 I4 E2E + demo matrix (both models) |
-| #35 I2 token route + registry | #38 A2 adapter + both impls | #44 B2 SeedSource + Wikimedia | #52 I5 hardening + deploy |
-| #36 I3 calibration spike (3h, pair) | #39 A3 video + WASD/pointer-lock | #45 B3 Europeana + Flickr Commons | |
-| | #40 A4 session state machine | #46 B4 Google CSE fallback | |
-| | #41 A5 progress UX + dev panel | #47 B5 ranking + insufficiency | |
-| | #42 A6 HUD + capability-aware actions | #48 B6 image normalization + Blob (calls B9) | |
-| | | #49 B7 orchestrator + cache + streaming | |
-| | | #50 B8 prompt composer + decade packs | |
-| | | #53 B9 Modal GPU restoration endpoint *(optional)* | |
+| Day 0–1 (both)                      | Hacker A — Experience                 | Hacker B — World data                              | Final (both)                           |
+| ----------------------------------- | ------------------------------------- | -------------------------------------------------- | -------------------------------------- |
+| #34 I1 scaffold + contract + mock   | #37 A1 landing form                   | #43 B1 Nominatim geocoder                          | #51 I4 E2E + demo matrix (both models) |
+| #35 I2 token route + registry       | #38 A2 adapter + both impls           | #44 B2 SeedSource + Wikimedia                      | #52 I5 hardening + deploy              |
+| #36 I3 calibration spike (3h, pair) | #39 A3 video + WASD/pointer-lock      | #45 B3 Europeana + Flickr Commons                  |                                        |
+|                                     | #40 A4 session state machine          | #46 B4 Google CSE fallback                         |                                        |
+|                                     | #41 A5 progress UX + dev panel        | #47 B5 ranking + insufficiency                     |                                        |
+|                                     | #42 A6 HUD + capability-aware actions | #48 B6 image normalization + Blob (calls B9)       |                                        |
+|                                     |                                       | #49 B7 orchestrator + cache + streaming            |                                        |
+|                                     |                                       | #50 B8 prompt composer + decade packs              |                                        |
+|                                     |                                       | #53 B9 Modal GPU restoration endpoint _(optional)_ |                                        |
 
 ### Dependency graph
 
@@ -190,16 +195,16 @@ A builds against the I1 mock until B7 lands; B tests sourcing via `pnpm seed:dry
 
 ## Risks
 
-| Risk | Mitigation |
-|---|---|
-| Photo scarcity for non-Western / pre-1950 pairs | 404 with `closestDecade` hint; rank resolution heavily |
-| Happy Oyster aspect constraint (1.5–2.0) | B6 always outputs 16:9; portrait ranked down hard |
+| Risk                                            | Mitigation                                                                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Photo scarcity for non-Western / pre-1950 pairs | 404 with `closestDecade` hint; rank resolution heavily                                                                     |
+| Happy Oyster aspect constraint (1.5–2.0)        | B6 always outputs 16:9; portrait ranked down hard                                                                          |
 | Modal cold starts / outages add latency or fail | 10s timeout + `sharp`-only fallback; `keep_warm=1` during demos; restoration results content-addressed so repeats are free |
-| GPU spend | Restore only the top 4 candidates, only when below target width or flagged as a scan; Modal spend alert in I5 |
-| Model SDK divergence | Adapter contract tests; `ENABLED_MODELS` kill-switch without a code deploy |
-| Reactor session cost | `max_sessions` on tokens; `dispose()` discipline; measured in I3 |
-| Nominatim policy / Google CSE quota | Aggressive caching; CSE fallback-only with logging |
-| World drift on long walks | Per-model `driftReset` via the adapter (`triggerKvCacheReset`, re-attach, or reset+reseed) |
+| GPU spend                                       | Restore only the top 4 candidates, only when below target width or flagged as a scan; Modal spend alert in I5              |
+| Model SDK divergence                            | Adapter contract tests; `ENABLED_MODELS` kill-switch without a code deploy                                                 |
+| Reactor session cost                            | `max_sessions` on tokens; `dispose()` discipline; measured in I3                                                           |
+| Nominatim policy / Google CSE quota             | Aggressive caching; CSE fallback-only with logging                                                                         |
+| World drift on long walks                       | Per-model `driftReset` via the adapter (`triggerKvCacheReset`, re-attach, or reset+reseed)                                 |
 
 ## Post-MVP roadmap (`roadmap` issues #1–#18)
 
