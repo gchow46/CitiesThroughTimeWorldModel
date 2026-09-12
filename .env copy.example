@@ -1,0 +1,26 @@
+# --- Reactor ---
+# Server-only. NEVER expose to the browser (no NEXT_PUBLIC_ prefix).
+REACTOR_API_KEY=
+# Default model id + enabled ids (comma list). See lib/reactor/registry.ts.
+WORLD_MODEL=happy-oyster-adventure
+ENABLED_MODELS=lingbot-world-2,happy-oyster-adventure
+
+# --- Dev ---
+# Serve canned Amsterdam-1960 payloads from POST /api/world and a fake token
+# from POST /api/reactor/token. No Reactor key needed.
+MOCK_WORLD=1
+# Lighter dev escape: run the REAL pipeline but mint fake JWTs.
+# MOCK_TOKEN=1
+
+# --- Seed pipeline (B-workstream) ---
+GOOGLE_CSE_KEY=
+GOOGLE_CSE_CX=
+EUROPEANA_KEY=
+FLICKR_KEY=
+BLOB_READ_WRITE_TOKEN=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+
+# --- Optional Modal GPU restoration (B9; unset = sharp-only) ---
+RESTORE_ENDPOINT=
+RESTORE_KEY=
