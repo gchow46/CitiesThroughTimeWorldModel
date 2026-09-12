@@ -65,7 +65,11 @@ async function scoreOne(c: SeedCandidate): Promise<number> {
     .greyscale()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  return walkabilityFromRaw(new Uint8Array(data.buffer, data.byteOffset, data.length), info.width, info.height);
+  return walkabilityFromRaw(
+    new Uint8Array(data.buffer, data.byteOffset, data.length),
+    info.width,
+    info.height,
+  );
 }
 
 /**
