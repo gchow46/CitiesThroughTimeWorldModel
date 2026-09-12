@@ -22,6 +22,27 @@
 `GOOGLE_CSE_KEY`, `GOOGLE_CSE_CX`, `EUROPEANA_KEY`, `FLICKR_KEY`,
 `BLOB_READ_WRITE_TOKEN`, `UPSTASH_*`, `RESTORE_KEY` — server-only, same rules.
 
+## Then & Now / Google Maps
+
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is **intentionally browser-visible** — it
+  is not a secret like `REACTOR_API_KEY`. It must be secured with Google
+  Cloud application restrictions (exact website referrers; never
+  `*.vercel.app`) and API restrictions (Maps JavaScript API only). Never
+  reuse `GOOGLE_CSE_KEY` for this purpose.
+- `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` is a public identifier, not a secret.
+- `NEXT_PUBLIC_ENABLE_THEN_NOW` is a build-time flag embedded in the bundle.
+  The operator-controlled incident stop is disabling the key/API in Google
+  Cloud, not the flag.
+- `NEXT_PUBLIC_COMPARISON_DRIVER=fake` is a development/preview escape that
+  selects a deterministic fake driver with no Google network access. It must
+  never be set in production.
+- The comparison driver never receives a Reactor session token, and no
+  Google data (imagery, pano IDs/metadata, user-selected points) is persisted
+  to Redis, Blob, storage, or any dataset.
+- Loader/service failures are normalized to stable reasons
+  (`no-coverage|timeout|configuration|network|quota`); raw provider error
+  text is never reflected to the UI.
+
 ## Data handling
 
 - Seed images are re-encoded through sharp (metadata stripped) before

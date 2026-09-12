@@ -1,12 +1,12 @@
 import { MODEL_IDS, type ModelId } from "./types";
 
 export function isMockWorld(): boolean {
-  return process.env.MOCK_WORLD === "1";
+  return process.env.CTT_E2E_MOCK === "1" || process.env.MOCK_WORLD === "1";
 }
 
 /** Dev escape: mint fake JWTs while still running the real pipeline. */
 export function isMockToken(): boolean {
-  return isMockWorld() || process.env.MOCK_TOKEN === "1";
+  return isMockWorld() || process.env.CTT_E2E_MOCK === "1" || process.env.MOCK_TOKEN === "1";
 }
 
 export function defaultModel(): ModelId {

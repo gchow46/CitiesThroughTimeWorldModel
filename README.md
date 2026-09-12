@@ -92,6 +92,39 @@ pnpm prewarm                               # warm shared seed cache for demo cel
    **Upstash Redis** (cross-instance cache + rate limiting).
 4. `vercel deploy --prod`, then `pnpm prewarm --base https://<app>.vercel.app`.
 
+## Then & Now comparison (optional)
+
+`THEN_AND_NOW_IMPLEMENTATION_PLAN.md` describes the side-by-side historical
+world / Google Street View pane on `/world`. It is off by default.
+
+```bash
+NEXT_PUBLIC_ENABLE_THEN_NOW=true       # build-time feature flag (redeploy to change)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=…      # browser key — restrict by referrer + API
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=…       # JS map ID for Advanced Markers
+NEXT_PUBLIC_COMPARISON_DRIVER=fake     # dev/preview only — deterministic fake, no Google calls
+```
+
+Setup notes (operator tasks, not code):
+
+- Enable **Maps JavaScript API** + billing in the Cloud project; create a
+  production map ID and separate dev/production **website-restricted** keys.
+  Allowlist exact origins (never `*.vercel.app`); restrict the key to the
+  Maps JavaScript API only. Set quota limits and billing alerts — budget
+  alerts do not stop spending.
+- Dynamic Street View bills per panorama load (~$14/1,000 after the free
+  cap) and Dynamic Maps per map load — keep one viewer/map per session.
+- `NEXT_PUBLIC_*` values are embedded at build time. For an incident, disable
+  the key/API in Google Cloud — the flag is not a live kill switch.
+- **EEA billing accounts:** Street View Static/Map Tiles Street View are
+  restricted next to any map; this feature uses the Maps JavaScript API
+  Street View service instead. Verify against the actual billing agreement.
+- No Google imagery, pano metadata, or user-picked points ever enter the
+  Reactor/blob/prompt pipeline — the comparison is display-only. Seed
+  locations come from archive metadata plus reviewed open-data anchors in
+  `lib/locations/curated.ts`.
+- See `/privacy` and `/terms` once deployed; consent gating may be required
+  in some regions before the SDK loads.
+
 ## Rules of the road
 
 - `REACTOR_API_KEY` is server-only — browsers get short-lived JWTs from

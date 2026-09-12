@@ -6,12 +6,16 @@ export function WorldHud({
   preview,
   onExit,
   onReseed,
+  comparisonOpen,
+  onToggleComparison,
 }: {
   payload: WorldPayload;
   decade: number;
   preview: boolean;
   onExit: () => void;
   onReseed?: () => void;
+  comparisonOpen?: boolean;
+  onToggleComparison?: () => void;
 }) {
   const sourceUrl = safeUrl(payload.seed.sourceUrl);
   return (
@@ -24,6 +28,16 @@ export function WorldHud({
           </h2>
         </div>
         <div className="hud-actions">
+          {onToggleComparison && (
+            <button
+              className="button secondary"
+              onClick={onToggleComparison}
+              aria-pressed={comparisonOpen === true}
+              title="Show or hide the present-day Street View comparison"
+            >
+              Then &amp; Now <span aria-hidden="true">◧</span>
+            </button>
+          )}
           {onReseed && (payload.alternates?.length ?? 0) > 0 && (
             <button
               className="button secondary"

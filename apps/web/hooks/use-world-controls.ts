@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
   CONTROL_KEYS,
   controlsFromKeys,
@@ -19,6 +19,9 @@ export function useWorldControls(
   const [locked, setLocked] = useState(false);
   const [pointerNotice, setPointerNotice] = useState("");
   const [pressed, setPressed] = useState<Controls>(IDLE);
+  // Lets a parent release held keys/pointer lock + publish IDLE when input
+  // ownership transfers to another pane (comparison, map, divider).
+  const releaseRef = useRef<() => void>(() => {});
   const lock = useCallback(async () => {
     const element = ref.current;
     if (!element || !enabled) return;
@@ -60,6 +63,7 @@ export function useWorldControls(
       element.blur();
       reset();
     };
+    releaseRef.current = release;
     const onFocus = () => setFocused(true);
     const onKey = (event: KeyboardEvent) => {
       if (document.activeElement !== element) return;
@@ -108,6 +112,7 @@ export function useWorldControls(
     document.addEventListener("mousemove", onMouse);
     return () => {
       release();
+      releaseRef.current = () => {};
       setLocked(false);
       element.removeEventListener("focus", onFocus);
       element.removeEventListener("blur", reset);
@@ -120,11 +125,13 @@ export function useWorldControls(
       document.removeEventListener("mousemove", onMouse);
     };
   }, [enabled, ref, send]);
+  const release = useCallback(() => releaseRef.current(), []);
   return {
     focused: enabled && focused,
     locked: enabled && locked,
     pressed: enabled ? pressed : IDLE,
     lock,
+    release,
     pointerNotice,
   };
 }

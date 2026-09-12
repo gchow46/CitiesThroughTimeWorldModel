@@ -2,9 +2,12 @@ import {
   DECADES,
   isModelId,
   safeUrl,
+  type CityLocation,
+  type GeoPoint,
   type ModelId,
   type ModelState,
   type Seed,
+  type SeedLocation,
   type WorldFailure,
   type WorldPayload,
   type WorldProgress,
@@ -68,13 +71,74 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// Optional geographic evidence (Then & Now). Malformed optional geo is
+// dropped silently; a missing location never rejects a valid world payload.
+const LOCATION_ROLES = new Set(["camera", "subject", "unknown"]);
+const LOCATION_PROVENANCE = new Set(["archive", "curated"]);
+
+function finiteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseGeoPoint(value: unknown): GeoPoint | undefined {
+  if (!record(value)) return undefined;
+  const { lat, lng } = value;
+  if (!finiteNumber(lat) || !finiteNumber(lng)) return undefined;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return undefined;
+  return { lat, lng };
+}
+
+function parseSeedLocation(value: unknown): SeedLocation | undefined {
+  if (!record(value)) return undefined;
+  const point = parseGeoPoint(value.point);
+  const evidenceUrl =
+    typeof value.evidenceUrl === "string" && value.evidenceUrl
+      ? safeUrl(value.evidenceUrl)
+      : undefined;
+  if (
+    !point ||
+    typeof value.role !== "string" ||
+    !LOCATION_ROLES.has(value.role) ||
+    typeof value.provenance !== "string" ||
+    !LOCATION_PROVENANCE.has(value.provenance) ||
+    !evidenceUrl
+  )
+    return undefined;
+  const location: SeedLocation = {
+    point,
+    role: value.role as SeedLocation["role"],
+    provenance: value.provenance as SeedLocation["provenance"],
+    evidenceUrl,
+  };
+  // Optional subfields are dropped individually when malformed — never the
+  // whole seed, and never the location just because a hint is absent.
+  if (typeof value.label === "string" && value.label) location.label = value.label.slice(0, 200);
+  if (finiteNumber(value.accuracyMeters) && value.accuracyMeters >= 0)
+    location.accuracyMeters = value.accuracyMeters;
+  if (finiteNumber(value.headingDeg)) location.headingDeg = ((value.headingDeg % 360) + 360) % 360;
+  if (typeof value.reviewedAt === "string" && value.reviewedAt)
+    location.reviewedAt = value.reviewedAt.slice(0, 40);
+  return location;
+}
+
+function parseCityLocation(value: unknown): CityLocation | undefined {
+  if (!record(value) || value.source !== "nominatim") return undefined;
+  const center = parseGeoPoint(value.center);
+  if (!center || !record(value.bounds)) return undefined;
+  const { south, west, north, east } = value.bounds;
+  const lat = (v: unknown): v is number => finiteNumber(v) && v >= -90 && v <= 90;
+  const lng = (v: unknown): v is number => finiteNumber(v) && v >= -180 && v <= 180;
+  if (!lat(south) || !lat(north) || !lng(west) || !lng(east) || south > north) return undefined;
+  return { center, bounds: { south, west, north, east }, source: "nominatim" };
+}
+
 function parseSeed(value: unknown, base: string): Seed {
   if (!record(value) || typeof value.url !== "string") throw new WorldError("invalid_response");
   const url = safeUrl(value.url, base);
   const sourceUrl =
     typeof value.sourceUrl === "string" && value.sourceUrl ? safeUrl(value.sourceUrl) : "";
   if (!url || sourceUrl === undefined) throw new WorldError("invalid_response");
-  return {
+  const seed: Seed = {
     url,
     sourceUrl,
     title: typeof value.title === "string" && value.title ? value.title : "Historical photograph",
@@ -92,6 +156,9 @@ function parseSeed(value: unknown, base: string): Seed {
     year: typeof value.year === "number" ? value.year : undefined,
     restored: value.restored === true,
   };
+  const location = parseSeedLocation(value.location);
+  if (location) seed.location = location;
+  return seed;
 }
 
 export function parseWorldPayload(value: unknown, base: string): WorldPayload {
@@ -110,6 +177,9 @@ export function parseWorldPayload(value: unknown, base: string): WorldPayload {
     throw new WorldError("invalid_response");
   if (value.alternates !== undefined && !Array.isArray(value.alternates))
     throw new WorldError("invalid_response");
+  const meta: WorldPayload["meta"] = { canonicalCity: value.meta.canonicalCity };
+  const cityLocation = parseCityLocation(value.meta.cityLocation);
+  if (cityLocation) meta.cityLocation = cityLocation;
   return {
     model: { id: value.model.id, reactorModelName: value.model.reactorModelName as string },
     sessionToken: value.sessionToken,
@@ -125,7 +195,7 @@ export function parseWorldPayload(value: unknown, base: string): WorldPayload {
     enabledModels: Array.isArray(value.enabledModels)
       ? value.enabledModels.filter(isModelId)
       : undefined,
-    meta: { canonicalCity: value.meta.canonicalCity },
+    meta,
   };
 }
 

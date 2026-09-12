@@ -13,6 +13,9 @@ importers:
 
   apps/web:
     dependencies:
+      "@googlemaps/js-api-loader":
+        specifier: 2.1.1
+        version: 2.1.1
       "@reactor-models/happy-oyster":
         specifier: 1.0.0
         version: 1.0.0(@tensorflow/tfjs-core@4.22.0)(react@19.3.0)(seedrandom@3.0.5)
@@ -47,6 +50,9 @@ importers:
       "@playwright/test":
         specifier: 1.63.0
         version: 1.63.0
+      "@types/google.maps":
+        specifier: 3.66.2
+        version: 3.66.2
       "@types/node":
         specifier: ^22.10.0
         version: 22.20.2
@@ -425,6 +431,12 @@ packages:
         integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==,
       }
     engines: { node: ^18.18.0 || ^20.9.0 || >=21.1.0 }
+
+  "@googlemaps/js-api-loader@2.1.1":
+    resolution:
+      {
+        integrity: sha512-yUpAwksbHrlZIWD49JmveNSfBG4oAK0AwMknfSaPMnP5N7UT8oFRVCqwjGb1XQovi//7KLbPQKZpbofiLGzpDw==,
+      }
 
   "@humanfs/core@0.19.2":
     resolution:
@@ -1218,6 +1230,12 @@ packages:
     resolution:
       {
         integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==,
+      }
+
+  "@types/google.maps@3.66.2":
+    resolution:
+      {
+        integrity: sha512-Lg/U5iLj90fQV3jQJo6hmGYsNAecXH3J+3LkKb4AupYyyI3UFx7y4hINz1pYILX0DEWNN1FeCAXLUEjBBeV9XA==,
       }
 
   "@types/json-schema@7.0.15":
@@ -4556,6 +4574,10 @@ snapshots:
       "@eslint/core": 0.17.0
       levn: 0.4.1
 
+  "@googlemaps/js-api-loader@2.1.1":
+    dependencies:
+      "@types/google.maps": 3.66.2
+
   "@humanfs/core@0.19.2":
     dependencies:
       "@humanfs/types": 0.15.0
@@ -4939,6 +4961,8 @@ snapshots:
   "@types/dom-webcodecs@0.1.19": {}
 
   "@types/estree@1.0.9": {}
+
+  "@types/google.maps@3.66.2": {}
 
   "@types/json-schema@7.0.15": {}
 

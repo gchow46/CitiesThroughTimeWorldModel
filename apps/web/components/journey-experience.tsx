@@ -4,6 +4,7 @@ import { Suspense, useRef } from "react";
 import Link from "next/link";
 import { CityDecadeForm } from "./city-decade-form";
 import { WorldViewport } from "./world-viewport";
+import { WorldComparison } from "./world-comparison";
 import { WorldStatus } from "./world-status";
 import { WorldDevPanel } from "./world-dev-panel";
 import { useWorldStore } from "./world-provider";
@@ -93,17 +94,28 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
               )}
             </aside>
           )}
-          <WorldViewport
-            videoRef={isWorld ? videoRef : localVideo}
-            onVideo={isWorld ? registerVideo : undefined}
-            phase={isWorld ? state.phase : "idle"}
-            payload={isWorld ? state.payload : undefined}
-            decade={state.request?.decade}
-            preview={state.preview}
-            onExit={newSearch}
-            onReseed={isWorld ? reseed : undefined}
-            send={setControls}
-          />
+          {isWorld ? (
+            <WorldComparison
+              videoRef={videoRef}
+              onVideo={registerVideo}
+              phase={state.phase}
+              payload={state.payload}
+              decade={state.request?.decade}
+              preview={state.preview}
+              onExit={newSearch}
+              onReseed={reseed}
+              send={setControls}
+            />
+          ) : (
+            <WorldViewport
+              videoRef={localVideo}
+              phase="idle"
+              decade={state.request?.decade}
+              preview={state.preview}
+              onExit={newSearch}
+              send={setControls}
+            />
+          )}
         </div>
         {state.notice && (
           <p className="integration-notice" role="status">
@@ -139,6 +151,10 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
       </main>
       <footer className="site-footer">
         <span>AI-generated interpretations, not exact historical reconstructions.</span>
+        <span className="footer-links">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+        </span>
         <span>
           {state.preview
             ? state.backendMock

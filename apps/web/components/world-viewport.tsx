@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import Image from "next/image";
 import type { WorldPayload, WorldPhase } from "../lib/frontend-types";
 import type { Controls } from "../lib/reactor/client/controls";
@@ -17,6 +17,9 @@ export function WorldViewport({
   onReseed,
   send,
   onVideo,
+  comparisonOpen,
+  onToggleComparison,
+  registerRelease,
 }: {
   videoRef: RefObject<HTMLVideoElement | null>;
   phase: WorldPhase;
@@ -27,15 +30,24 @@ export function WorldViewport({
   onReseed?: () => void;
   send: (controls: Controls) => void;
   onVideo?: (video: HTMLVideoElement | null) => void;
+  /** Then & Now: whether the comparison split is currently visible. */
+  comparisonOpen?: boolean;
+  /** Then & Now: provided when a comparison target is available. */
+  onToggleComparison?: () => void;
+  /** Registers the control-release hook used for input ownership transfer. */
+  registerRelease?: (release: () => void) => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [playbackMessage, setPlaybackMessage] = useState("");
   const playing = phase === "walking";
-  const { focused, pressed, lock, locked, pointerNotice } = useWorldControls(
+  const { focused, pressed, lock, locked, pointerNotice, release } = useWorldControls(
     viewport,
     playing,
     send,
   );
+  useEffect(() => {
+    registerRelease?.(release);
+  }, [registerRelease, release]);
   const attachVideo = useCallback(
     (video: HTMLVideoElement | null) => {
       videoRef.current = video;
@@ -97,6 +109,8 @@ export function WorldViewport({
             preview={preview}
             onExit={onExit}
             onReseed={onReseed}
+            comparisonOpen={comparisonOpen}
+            onToggleComparison={onToggleComparison}
           />
           {!focused && (
             <div className="enter-overlay">

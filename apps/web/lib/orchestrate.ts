@@ -1,6 +1,14 @@
-import type { ModelCapabilities, ModelId, ProgressEvent, Seed, WorldPayload } from "@/lib/types";
+import type {
+  CityLocation,
+  ModelCapabilities,
+  ModelId,
+  ProgressEvent,
+  Seed,
+  WorldPayload,
+} from "@/lib/types";
 import { cacheGet, cacheSet, withLock } from "./cache";
 import { geocodeCity, type GeoResult } from "./geocode";
+import { applyCuratedLocations } from "./locations/curated";
 import { citySlug } from "./slug";
 import { gatherCandidates, ARCHIVE_SOURCES, FALLBACK_SOURCE, type SourceQuery } from "./sources";
 import {
@@ -29,6 +37,29 @@ interface SharedWorld {
   alternates: Seed[];
   prompt: string;
   canonicalCity: string;
+}
+
+/** GeoResult → CityLocation: lat stays lat, lon becomes lng (once, here). */
+export function cityLocationFromGeo(geo: GeoResult): CityLocation {
+  return {
+    center: { lat: geo.lat, lng: geo.lon },
+    bounds: { ...geo.bbox },
+    source: "nominatim",
+  };
+}
+
+/**
+ * Reviewed curated anchors override archive/empty locations. Runs before the
+ * shared cache write AND again at response assembly, so a stale cache entry
+ * can never hide a correction (THEN_AND_NOW §6.2 — caches are not
+ * invalidated when curated data changes).
+ */
+function withCuratedLocations(shared: SharedWorld): SharedWorld {
+  return {
+    ...shared,
+    seed: applyCuratedLocations(shared.seed),
+    alternates: shared.alternates.map(applyCuratedLocations),
+  };
 }
 
 export interface OrchestrateInput {
@@ -104,12 +135,12 @@ async function sourceSharedWorld(
     caps,
   });
 
-  const shared: SharedWorld = {
+  const shared: SharedWorld = withCuratedLocations({
     seed: seeds[0],
     alternates: seeds.slice(1, 4),
     prompt,
     canonicalCity: geo.canonicalName,
-  };
+  });
   await cacheSet(worldKey(slug, q.decade), shared, SHARED_TTL_SEC);
   return shared;
 }
@@ -149,17 +180,21 @@ export async function runWorldPipeline(input: OrchestrateInput, emit: Emit): Pro
   void expiresAt;
 
   const { id, reactorModelName, ...rest } = caps;
+  const resolved = withCuratedLocations(shared);
   return {
     model: { id, reactorModelName, caps: rest },
     sessionToken: token,
-    seed: shared.seed,
-    alternates: shared.alternates,
-    prompt: shared.prompt,
+    seed: resolved.seed,
+    alternates: resolved.alternates,
+    prompt: resolved.prompt,
     modelState: modelState ?? null,
     meta: {
-      canonicalCity: shared.canonicalCity,
+      canonicalCity: resolved.canonicalCity,
       cacheHit: Boolean(hit),
       sourcingMs: Date.now() - t0,
+      // City context travels on every response, including warm cache hits —
+      // it comes from GeoResult, which is re-fetched (cached) each request.
+      cityLocation: cityLocationFromGeo(geo),
     },
   };
 }

@@ -1,6 +1,15 @@
-import { MODEL_IDS, MIN_DECADE, MAX_DECADE, type ModelId } from "./types";
+import {
+  MODEL_IDS,
+  MIN_DECADE,
+  MAX_DECADE,
+  type CityLocation,
+  type ModelId,
+  type SeedLocation,
+} from "./types";
 export { MODEL_IDS };
 export type { ModelId, ModelCapabilities, WorldRequest } from "./types";
+// Geographic evidence for the Then & Now comparison (see lib/types.ts).
+export type { GeoPoint, SeedLocation, CityLocation } from "./types";
 export const DECADES = Array.from(
   { length: (MAX_DECADE - MIN_DECADE) / 10 + 1 },
   (_, index) => MIN_DECADE + index * 10,
@@ -16,6 +25,12 @@ export type Seed = {
   sourceUrl: string;
   year?: number;
   restored?: boolean;
+  /**
+   * Optional archive/curated location evidence for the Then & Now pane.
+   * Missing or malformed location data is dropped during normalization and
+   * must be presented as an unknown location, never as an exact match.
+   */
+  location?: SeedLocation;
 };
 export type ModelState = { encryptedWorldId: string };
 export type WorldPayload = {
@@ -26,7 +41,7 @@ export type WorldPayload = {
   modelState?: ModelState;
   enabledModels?: ModelId[];
   prompt: string;
-  meta: { canonicalCity: string };
+  meta: { canonicalCity: string; cityLocation?: CityLocation };
 };
 export type WorldPhase =
   | "idle"

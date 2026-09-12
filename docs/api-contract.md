@@ -35,13 +35,31 @@ Zero or more progress lines, then exactly one payload line (the last line):
   "seed": { "url": "https://blob/.../amsterdam-1960-a1.jpg", "thumbUrl": "...",
             "source": "wikimedia", "year": 1967, "title": "...", "author": "...",
             "license": "CC BY-SA 3.0", "sourceUrl": "...",
-            "licenseConfidence": "high", "restored": true },
+            "licenseConfidence": "high", "restored": true,
+            "location": { "point": { "lat": 52.3726, "lng": 4.9005 },
+                          "role": "camera", "provenance": "curated",
+                          "evidenceUrl": "https://commons.wikimedia.org/wiki/File:...",
+                          "label": "...", "accuracyMeters": 20,
+                          "headingDeg": 90, "reviewedAt": "2026-09-12" } },
   "alternates": [ /* ≤3 more Seed objects for re-seed rotation */ ],
   "prompt": "Amsterdam, Netherlands, 1960s: ...",
   "modelState": { "encryptedWorldId": "..." },
-  "meta": { "canonicalCity": "Amsterdam, Netherlands", "cacheHit": false, "sourcingMs": 4120 }
+  "meta": { "canonicalCity": "Amsterdam, Netherlands", "cacheHit": false, "sourcingMs": 4120,
+            "cityLocation": { "center": { "lat": 52.3676, "lng": 4.9041 },
+                              "bounds": { "south": 52.27, "west": 4.72,
+                                          "north": 52.43, "east": 5.08 },
+                              "source": "nominatim" } }
 }
 ```
+
+**Optional location fields (Then & Now).** `seed.location` / `alternates[].location`
+carry evidence-bearing archive or curated location metadata. `role` is
+`camera` (documented photo position), `subject` (depicted place), or
+`unknown` (unverifiable geotag); `provenance` is `archive` or `curated`.
+`headingDeg` is a documented archive camera heading only. `meta.cityLocation`
+is Nominatim city context (`lon` → `lng` at this boundary). All optional —
+legacy payloads omit them and remain valid. Malformed entries are dropped
+server-side, never a payload-level failure.
 
 Budget: ≤ 25s cold (≤ 30s with restoration), ≤ 2s warm (shared-cache hit).
 

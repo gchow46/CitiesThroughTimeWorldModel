@@ -26,6 +26,28 @@ export interface ModelCapabilities {
 
 export type SeedSourceId = "wikimedia" | "europeana" | "flickr" | "google-cse";
 
+// ---------- geo (Then & Now comparison) ----------
+
+export type GeoPoint = { lat: number; lng: number };
+
+export interface SeedLocation {
+  point: GeoPoint;
+  role: "camera" | "subject" | "unknown";
+  provenance: "archive" | "curated";
+  evidenceUrl: string;
+  label?: string;
+  accuracyMeters?: number;
+  /** Documented archive camera heading, not a subject's orientation. */
+  headingDeg?: number;
+  reviewedAt?: string;
+}
+
+export interface CityLocation {
+  center: GeoPoint;
+  bounds: { south: number; west: number; north: number; east: number };
+  source: "nominatim";
+}
+
 export interface SeedCandidate {
   /** Pre-normalization source URL (original archive image). */
   url: string;
@@ -44,6 +66,8 @@ export interface SeedCandidate {
    * Undefined = not scored; ranking treats it as neutral.
    */
   walkability?: number;
+  /** Optional archive/curated location evidence for Then & Now comparison. */
+  location?: SeedLocation;
 }
 
 /** A normalized, model-agnostic seed artifact served from blob storage. */
@@ -58,6 +82,8 @@ export interface Seed {
   sourceUrl?: string;
   licenseConfidence: "high" | "low";
   restored: boolean;
+  /** Optional archive/curated location evidence for Then & Now comparison. */
+  location?: SeedLocation;
 }
 
 // ---------- /api/world ----------
@@ -88,6 +114,8 @@ export interface WorldPayload {
     canonicalCity: string;
     cacheHit: boolean;
     sourcingMs: number;
+    /** Nominatim city context for Then & Now comparison; absent on legacy payloads. */
+    cityLocation?: CityLocation;
   };
 }
 

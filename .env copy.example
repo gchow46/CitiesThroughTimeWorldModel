@@ -24,3 +24,17 @@ UPSTASH_REDIS_REST_TOKEN=
 # --- Optional Modal GPU restoration (B9; unset = sharp-only) ---
 RESTORE_ENDPOINT=
 RESTORE_KEY=
+
+# --- Then & Now comparison (build-time public values; need a redeploy) ---
+# Feature flag: enables the comparison UI. Default off until rollout.
+# NOTE: this is a build-time switch, not a live kill switch — disable the
+# Google Cloud key/API for an immediate incident stop.
+# NEXT_PUBLIC_ENABLE_THEN_NOW=true
+# Browser-visible Maps JavaScript API key (intentionally public — secure it
+# with website referrer + API restrictions; never reuse GOOGLE_CSE_KEY).
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+# Production JavaScript map ID for Advanced Markers (DEMO_MAP_ID is dev-only).
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=
+# Development/preview only: pick the deterministic fake driver instead of
+# Google. Never set in production.
+# NEXT_PUBLIC_COMPARISON_DRIVER=fake

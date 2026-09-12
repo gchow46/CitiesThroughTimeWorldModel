@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import sharp from "sharp";
 import type { Seed, SeedCandidate } from "@/lib/types";
 import { putBlob } from "./blob";
+import { validateSeedLocation } from "./location";
 import { MODELS } from "./reactor/registry";
 
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -109,5 +110,9 @@ export async function normalizeSeed(
     sourceUrl: cand.sourceUrl,
     licenseConfidence: cand.licenseConfidence,
     restored,
+    // Structured location evidence travels through normalization — EXIF in
+    // the re-encoded pixels does not survive sharp, so the record must.
+    // Re-validated so malformed metadata is dropped, never fatal.
+    location: cand.location ? validateSeedLocation(cand.location) : undefined,
   };
 }
