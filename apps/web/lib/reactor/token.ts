@@ -41,24 +41,34 @@ export async function mintToken(modelId: ModelId): Promise<MintedToken> {
   const res = await fetch(REACTOR_TOKENS_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "Reactor-API-Key": apiKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      authorization_details: [{ resources: { models: { match: [caps.reactorModelName] } } }],
-      constraints: { max_sessions: MAX_SESSIONS },
-      expires_in: TOKEN_TTL_SECONDS,
+      expires_after: TOKEN_TTL_SECONDS,
+      authorization_details: [
+        {
+          type: "session",
+          resources: { models: { match: [caps.reactorModelName] } },
+          constraints: { max_sessions: MAX_SESSIONS },
+        },
+      ],
     }),
     signal: AbortSignal.timeout(10_000),
   });
 
-  if (!res.ok) throw new UpstreamError(`Reactor token mint failed (${res.status}).`);
-
-  const data = (await res.json()) as Record<string, unknown>;
-  const token = data.token ?? data.jwt ?? data.access_token;
-  if (typeof token !== "string") {
-    throw new UpstreamError("Reactor token response missing token field.");
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new UpstreamError(`Reactor token mint failed (${res.status}): ${detail}`);
   }
-  const expiresAt = data.expires_at ?? data.expiresAt;
-  return { token, model: modelId, expiresAt: typeof expiresAt === "string" ? expiresAt : null };
+
+  const data = (await res.json()) as { jwt?: string; expires_at?: number };
+  if (typeof data.jwt !== "string") {
+    throw new UpstreamError("Reactor token response missing jwt field.");
+  }
+  return {
+    token: data.jwt,
+    model: modelId,
+    expiresAt: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
+  };
 }

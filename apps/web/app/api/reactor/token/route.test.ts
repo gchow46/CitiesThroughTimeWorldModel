@@ -47,7 +47,7 @@ describe("POST /api/reactor/token", () => {
     process.env.REACTOR_API_KEY = "rk_test_secret_123";
 
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ token: "jwt.abc", expires_at: "2026-01-01T00:00:00Z" }), {
+      new Response(JSON.stringify({ jwt: "jwt.abc", expires_at: 1893456000 }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
@@ -62,13 +62,13 @@ describe("POST /api/reactor/token", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.reactor.inc/tokens");
-    expect(init.headers.Authorization).toBe("Bearer rk_test_secret_123");
+    expect(init.headers["Reactor-API-Key"]).toBe("rk_test_secret_123");
     const sent = JSON.parse(init.body);
     // token for model X is scoped so it cannot open model Y
-    expect(sent.authorization_details[0].resources.models.match).toEqual([
-      "reactor/happy-oyster-adventure",
-    ]);
-    expect(sent.constraints.max_sessions).toBe(2);
+    const detail = sent.authorization_details[0];
+    expect(detail.type).toBe("session");
+    expect(detail.resources.models.match).toEqual(["reactor/happy-oyster-adventure"]);
+    expect(detail.constraints.max_sessions).toBe(2);
   });
 
   it("returns 502 when the key is missing outside mock mode", async () => {
