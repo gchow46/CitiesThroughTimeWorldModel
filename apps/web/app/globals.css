@@ -447,26 +447,34 @@ h1 em {
 }
 .hud-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
-.hud-top button,
+.hud-top button {
+  padding: 8px 10px;
+  min-width: 36px;
+  min-height: 36px;
+  justify-content: center;
+  gap: 0;
+  font-size: 16px;
+  pointer-events: auto;
+}
 .hud-bottom a {
   pointer-events: auto;
 }
 .location-label {
   background: #111b15d9;
-  padding: 12px 17px;
+  padding: 9px 14px;
   border: 1px solid #4d5947;
   border-radius: 3px;
-}
-.location-label .eyebrow {
-  font-size: 8px;
-  color: var(--accent);
+  max-width: 260px;
 }
 .location-label h2 {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
-  margin: 5px 0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .location-label h2 > span {
   font-weight: 400;
@@ -480,24 +488,18 @@ h1 em {
   max-width: 65%;
   text-shadow: 0 1px 3px #000;
 }
-.seed-credit .eyebrow {
-  font-size: 8px;
-  color: #cbbf9f;
-}
-.seed-credit p {
-  font-size: 11px;
-  margin: 7px 0;
+.seed-credit span {
+  display: block;
+  font-size: 10px;
+  margin: 0 0 4px;
 }
 .seed-credit small {
+  display: block;
   font-size: 9px;
   color: #b4c0b2;
 }
 .engine-label {
-  font-size: 9px;
-  color: #c5ceb9;
-  background: #18281acc;
-  padding: 8px 12px;
-  border-radius: 20px;
+  display: none;
 }
 .enter-overlay {
   position: absolute;
@@ -505,15 +507,11 @@ h1 em {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  width: min(90%, 370px);
+  width: min(90%, 240px);
 }
-.enter-overlay p {
-  font-size: 11px;
-  line-height: 1.7;
-  color: #e0e2d6;
-  background: #152018d9;
-  padding: 8px;
-  border-radius: 3px;
+.enter-overlay .button {
+  padding: 14px 24px;
+  font-size: 14px;
 }
 .controls-bar {
   position: absolute;
@@ -521,9 +519,9 @@ h1 em {
   left: 0;
   right: 0;
   display: flex;
-  gap: 30px;
+  gap: 20px;
   align-items: center;
-  padding: 17px 24px;
+  padding: 11px 18px;
   background: #15201bed;
   border-top: 1px solid #536048;
   pointer-events: none;
@@ -531,12 +529,7 @@ h1 em {
 .key-group {
   display: flex;
   align-items: center;
-  gap: 5px;
-}
-.key-group span {
-  font-size: 10px;
-  color: #acb6a9;
-  margin-left: 8px;
+  gap: 4px;
 }
 kbd {
   border: 1px solid #64705d;

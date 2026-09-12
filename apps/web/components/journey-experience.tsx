@@ -21,7 +21,7 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
     <div className={`app-frame ${walking ? "exploring" : ""}`}>
       <header className="site-header">
         <Link className="brand" href="/" onClick={exit} aria-label="Cities Through Time home">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
             <circle cx="16" cy="16" r="14" stroke="currentColor" />
             <path
               d="M8 23V13l5-4v14M13 23V6l5 4v13M18 23V14l6-4v13M5 23h22"
@@ -35,8 +35,6 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
             <b>THROUGH TIME</b>
           </span>
         </Link>
-        <span className="header-note">A new way to explore the past</span>
-        <span className="header-tag">{state.preview ? "Local preview" : "MVP / 01"}</span>
       </header>
       <main>
         <div className="experience-layout">
@@ -44,23 +42,11 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
             <aside className="journey-panel">
               {searching ? (
                 <>
-                  <p className="eyebrow accent">History, from street level</p>
                   <h1>
                     Walk into
                     <br />
                     another <em>decade.</em>
                   </h1>
-                  <p className="intro">
-                    Some places you can only imagine.
-                    <br />
-                    Now, you can explore them.
-                  </p>
-                  {isWorld && !state.payload && (
-                    <p className="muted">
-                      Start a journey below. Session tokens are never saved in the URL or browser
-                      storage.
-                    </p>
-                  )}
                   {state.failure && (
                     <div className="error-card" role="alert">
                       <strong>
@@ -125,43 +111,20 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
         <Suspense fallback={null}>
           <WorldDevPanel />
         </Suspense>
-        {!walking && (
-          <div className="experience-notes">
-            <div>
-              <span>01</span>
-              <p>
-                <strong>Rooted in real photographs</strong>Historical imagery sets the scene.
-              </p>
-            </div>
-            <div>
-              <span>02</span>
-              <p>
-                <strong>Made to be explored</strong>A live world, not a prerecorded film.
-              </p>
-            </div>
-            <div>
-              <span>03</span>
-              <p>
-                <strong>Your own point of view</strong>WASD to walk. Mouse or arrows to look.
-              </p>
-            </div>
-          </div>
-        )}
-        <p className="mobile-notice">For the walkthrough, use a desktop browser with a keyboard.</p>
       </main>
       <footer className="site-footer">
-        <span>AI-generated interpretations, not exact historical reconstructions.</span>
+        <span>
+          {state.backendMock
+            ? "Backend mock · no live world"
+            : state.preview
+              ? "No API calls · no live world"
+              : "Worlds powered by Reactor"}
+        </span>
         <span className="footer-links">
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
         </span>
-        <span>
-          {state.preview
-            ? state.backendMock
-              ? "Backend mock · no live world"
-              : "No API calls · no live world"
-            : "Worlds powered by Reactor"}
-        </span>
+        <span>AI-generated interpretations, not exact historical reconstructions.</span>
       </footer>
     </div>
   );

@@ -32,11 +32,7 @@ export function WorldStatus({
   const current = STEP[phase] ?? 0;
   return (
     <section className="loading-panel" aria-live="polite" aria-atomic="true">
-      <p className="eyebrow">A journey in the making</p>
       <h2>{LABELS[phase]}</h2>
-      <p className="muted">
-        Keep this tab open while we prepare your scene. You can cancel at any point.
-      </p>
       {progress && (
         <p className="progress-detail">
           <strong>{progress.stage.replaceAll("_", " ")}</strong>
@@ -49,14 +45,13 @@ export function WorldStatus({
             key={step}
             className={index === current ? "current" : index < current ? "complete" : ""}
           >
-            <span>{String(index + 1).padStart(2, "0")}</span>
             {step}
             {index === current && <i className="stage-pulse" aria-hidden="true" />}
           </li>
         ))}
       </ol>
-      <button className="button secondary" onClick={onCancel}>
-        Cancel journey
+      <button className="button secondary" onClick={onCancel} aria-label="Cancel journey">
+        Cancel
       </button>
     </section>
   );

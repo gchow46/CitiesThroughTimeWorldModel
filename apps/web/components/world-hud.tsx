@@ -3,7 +3,7 @@ import { safeUrl, type WorldPayload } from "../lib/frontend-types";
 export function WorldHud({
   payload,
   decade,
-  preview,
+  preview: _preview,
   onExit,
   onReseed,
   comparisonOpen,
@@ -22,7 +22,6 @@ export function WorldHud({
     <>
       <div className="hud-top">
         <div className="location-label">
-          <span className="eyebrow">{preview ? "Local preview" : "Your destination"}</span>
           <h2>
             {payload.meta.canonicalCity} <span>/ {decade}s</span>
           </h2>
@@ -33,30 +32,34 @@ export function WorldHud({
               className="button secondary"
               onClick={onToggleComparison}
               aria-pressed={comparisonOpen === true}
+              aria-label="Then &amp; Now"
               title="Show or hide the present-day Street View comparison"
             >
-              Then &amp; Now <span aria-hidden="true">◧</span>
+              <span aria-hidden="true">◧</span>
             </button>
           )}
           {onReseed && (payload.alternates?.length ?? 0) > 0 && (
             <button
               className="button secondary"
               onClick={onReseed}
+              aria-label="Try another photograph"
               title="Restart this world from the next archival photograph"
             >
-              Try another photograph <span aria-hidden="true">↻</span>
+              <span aria-hidden="true">↻</span>
             </button>
           )}
-          <button className="button secondary" onClick={onExit}>
-            New search <span aria-hidden="true">↗</span>
+          <button
+            className="button secondary"
+            onClick={onExit}
+            aria-label="New search"
+            title="Back to search"
+          >
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
       </div>
       <div className="hud-bottom">
         <div className="seed-credit">
-          <span className="eyebrow">
-            {preview ? "UI illustration · not an archival photo" : "Anchored in a real photograph"}
-          </span>
           <p>
             {sourceUrl ? (
               <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
@@ -71,10 +74,6 @@ export function WorldHud({
             {payload.seed.year ? ` · ${payload.seed.year}` : ""}
           </small>
         </div>
-        <span className="engine-label">
-          {payload.model.id === "lingbot-world-2" ? "LingBot World 2" : "Happy Oyster Adventure"}
-          {preview ? " · simulated" : ""}
-        </span>
       </div>
     </>
   );

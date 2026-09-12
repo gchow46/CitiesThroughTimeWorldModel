@@ -40,7 +40,7 @@ export function WorldViewport({
   const viewport = useRef<HTMLDivElement>(null);
   const [playbackMessage, setPlaybackMessage] = useState("");
   const playing = phase === "walking";
-  const { focused, pressed, lock, locked, pointerNotice, release } = useWorldControls(
+  const { focused, pressed, lock, pointerNotice, release } = useWorldControls(
     viewport,
     playing,
     send,
@@ -114,15 +114,13 @@ export function WorldViewport({
           />
           {!focused && (
             <div className="enter-overlay">
-              <button className="button primary" onClick={() => void enter()}>
-                {preview ? "Try keyboard controls" : "Enter world"}{" "}
-                <span aria-hidden="true">→</span>
+              <button
+                className="button primary"
+                onClick={() => void enter()}
+                aria-label={preview ? "Try keyboard controls" : "Enter world"}
+              >
+                {preview ? "Preview" : "Enter"}
               </button>
-              <p>
-                {preview
-                  ? "Static UI preview. No live generation or camera movement."
-                  : "Click to focus. Escape releases your keyboard."}
-              </p>
             </div>
           )}
           <div className="controls-bar" aria-label="Keyboard hints">
@@ -131,22 +129,13 @@ export function WorldViewport({
               <kbd className={pressed.right < 0 ? "down" : ""}>A</kbd>
               <kbd className={pressed.forward < 0 ? "down" : ""}>S</kbd>
               <kbd className={pressed.right > 0 ? "down" : ""}>D</kbd>
-              <span>Walk</span>
             </div>
             <div className="key-group">
               <kbd className={pressed.lookY > 0 ? "down" : ""}>↑</kbd>
               <kbd className={pressed.lookX < 0 ? "down" : ""}>←</kbd>
               <kbd className={pressed.lookY < 0 ? "down" : ""}>↓</kbd>
               <kbd className={pressed.lookX > 0 ? "down" : ""}>→</kbd>
-              <span>Look · mouse or arrows</span>
             </div>
-            <span className="focus-state">
-              {locked
-                ? "Mouse captured · Esc to release"
-                : focused
-                  ? "Keyboard active"
-                  : "Click to explore"}
-            </span>
           </div>
         </>
       ) : payload ? (

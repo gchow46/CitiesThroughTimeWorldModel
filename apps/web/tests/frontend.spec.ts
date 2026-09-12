@@ -97,12 +97,9 @@ test("unknown model is rejected without a network request", async ({ page }) => 
   expect(requests).toBe(0);
 });
 
-test("small screen shows desktop guidance and no horizontal overflow", async ({ page }) => {
+test("small screen has no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(
-    page.getByText("For the walkthrough, use a desktop browser with a keyboard."),
-  ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

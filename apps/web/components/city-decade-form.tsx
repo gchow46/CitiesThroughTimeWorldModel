@@ -23,9 +23,7 @@ export function CityDecadeForm({
       }}
     >
       <div className="field">
-        <label htmlFor="city">
-          <span>01</span> Where do you want to go?
-        </label>
+        <label htmlFor="city">City</label>
         <input
           id="city"
           name="city"
@@ -38,9 +36,7 @@ export function CityDecadeForm({
         />
       </div>
       <div className="field">
-        <label htmlFor="decade">
-          <span>02</span> Choose your decade
-        </label>
+        <label htmlFor="decade">Decade</label>
         <div className="select-wrap">
           <select
             id="decade"
@@ -57,10 +53,14 @@ export function CityDecadeForm({
           <span aria-hidden="true">⌄</span>
         </div>
       </div>
-      <button className="button primary explore-button" type="submit" disabled={!city.trim()}>
-        Explore this era <span aria-hidden="true">↗</span>
+      <button
+        className="button primary explore-button"
+        type="submit"
+        disabled={!city.trim()}
+        aria-label="Explore this era"
+      >
+        Explore
       </button>
-      <p className="form-note">Historical photo coverage varies by city and decade.</p>
       {previewEnabled && (
         <button
           className="preview-link"
