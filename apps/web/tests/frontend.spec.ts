@@ -32,6 +32,17 @@ for (const model of ["lingbot-world-2", "happy-oyster-adventure"]) {
   });
 }
 
+test("reseed swaps in the next archival photograph", async ({ page }) => {
+  await page.goto("/?model=lingbot-world-2");
+  await page.getByRole("button", { name: /Try a local UI preview/ }).click();
+  const credit = page.locator(".seed-credit p");
+  await expect(credit).toContainText("Imagined canal street");
+  await page.getByRole("button", { name: /Try another photograph/ }).click();
+  await expect(credit).toContainText("Alternate UI illustration");
+  // The previous seed cycles back into alternates — button stays available.
+  await expect(page.getByRole("button", { name: /Try another photograph/ })).toBeEnabled();
+});
+
 test("backend failure is actionable and never reflects arbitrary server messages", async ({
   page,
 }) => {

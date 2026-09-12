@@ -13,9 +13,13 @@ const TARGET_ASPECT = TARGET_W / TARGET_H;
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/tiff"]);
 
-async function fetchImage(url: string): Promise<Buffer> {
+export async function fetchImage(
+  url: string,
+  opts: { timeoutMs?: number; maxBytes?: number } = {},
+): Promise<Buffer> {
+  const maxBytes = opts.maxBytes ?? MAX_BYTES;
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? FETCH_TIMEOUT_MS),
     // Wikimedia upload servers 429 requests without a descriptive UA.
     headers: {
       "user-agent":
@@ -26,7 +30,7 @@ async function fetchImage(url: string): Promise<Buffer> {
   const type = res.headers.get("content-type")?.split(";")[0].trim() ?? "";
   if (!ALLOWED_TYPES.has(type)) throw new Error(`unsupported content-type: ${type}`);
   const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.byteLength > MAX_BYTES) throw new Error("seed image exceeds 15MB");
+  if (buf.byteLength > maxBytes) throw new Error("seed image exceeds byte cap");
   return buf;
 }
 

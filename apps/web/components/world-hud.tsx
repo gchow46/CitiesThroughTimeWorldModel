@@ -5,11 +5,13 @@ export function WorldHud({
   decade,
   preview,
   onExit,
+  onReseed,
 }: {
   payload: WorldPayload;
   decade: number;
   preview: boolean;
   onExit: () => void;
+  onReseed?: () => void;
 }) {
   const sourceUrl = safeUrl(payload.seed.sourceUrl);
   return (
@@ -21,9 +23,20 @@ export function WorldHud({
             {payload.meta.canonicalCity} <span>/ {decade}s</span>
           </h2>
         </div>
-        <button className="button secondary" onClick={onExit}>
-          New search <span aria-hidden="true">↗</span>
-        </button>
+        <div className="hud-actions">
+          {onReseed && (payload.alternates?.length ?? 0) > 0 && (
+            <button
+              className="button secondary"
+              onClick={onReseed}
+              title="Restart this world from the next archival photograph"
+            >
+              Try another photograph <span aria-hidden="true">↻</span>
+            </button>
+          )}
+          <button className="button secondary" onClick={onExit}>
+            New search <span aria-hidden="true">↗</span>
+          </button>
+        </div>
       </div>
       <div className="hud-bottom">
         <div className="seed-credit">

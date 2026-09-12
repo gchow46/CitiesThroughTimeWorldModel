@@ -9,6 +9,7 @@ import {
   MIN_CANDIDATES,
   rankCandidates,
 } from "./ranking";
+import { scoreWalkability } from "./walkability";
 import { normalizeSeed } from "./image";
 import { composePrompt } from "./prompts";
 import { mintToken } from "./reactor/token";
@@ -68,7 +69,10 @@ async function sourceSharedWorld(
   emit({ stage: "sourcing", detail: `${candidates.length} candidates` });
 
   emit({ stage: "ranking" });
-  const ranked = rankCandidates(candidates, q.decade);
+  const metadataRanked = rankCandidates(candidates, q.decade);
+  emit({ stage: "ranking", detail: "scoring walkable foregrounds" });
+  const withWalk = await scoreWalkability(metadataRanked);
+  const ranked = rankCandidates(withWalk, q.decade);
   let top;
   try {
     top = assertSufficient(ranked);

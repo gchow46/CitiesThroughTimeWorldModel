@@ -67,7 +67,8 @@ export function composePrompt({ city, countryCode, decade, seed, caps }: Compose
       ? `Period detail: ${pack.vehicles}; ${pack.signage}; people in ${pack.clothing}; ` +
         `${pack.streetFurniture}. Look and feel: ${pack.film}.`
       : "") +
-    ` Local flavour: ${flavour}. Street-level first-person view.` +
+    ` Local flavour: ${flavour}. Street-level first-person view, a clear open ` +
+    `path ahead — no parked vehicles blocking the way.` +
     spec.suffix;
 
   if (full.length <= spec.maxChars) return full;

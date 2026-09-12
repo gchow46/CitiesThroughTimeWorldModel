@@ -10,7 +10,7 @@ import { useWorldStore } from "./world-provider";
 
 export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
   const localVideo = useRef<HTMLVideoElement>(null);
-  const { state, begin, exit, newSearch, videoRef, registerVideo, setControls, reconnect } =
+  const { state, begin, exit, newSearch, videoRef, registerVideo, setControls, reconnect, reseed } =
     useWorldStore();
   const searching = ["idle", "error", "ended"].includes(state.phase);
   const walking = state.phase === "walking";
@@ -101,6 +101,7 @@ export function JourneyExperience({ isWorld }: { isWorld: boolean }) {
             decade={state.request?.decade}
             preview={state.preview}
             onExit={newSearch}
+            onReseed={isWorld ? reseed : undefined}
             send={setControls}
           />
         </div>

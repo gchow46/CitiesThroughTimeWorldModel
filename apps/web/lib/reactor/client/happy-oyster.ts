@@ -10,7 +10,12 @@ export const createHappyOyster: AdapterFactory = (video) => {
     mode: "adventure",
     videoElement: video,
     logLevel: (process.env.NEXT_PUBLIC_REACTOR_LOG_LEVEL ?? "off") as
-      "verbose" | "debug" | "info" | "warn" | "error" | "none",
+      | "off"
+      | "error"
+      | "warn"
+      | "info"
+      | "debug"
+      | "trace",
   });
   const bus = new AdapterBus();
   let disposed = false;

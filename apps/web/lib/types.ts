@@ -38,6 +38,12 @@ export interface SeedCandidate {
   width?: number;
   height?: number;
   licenseConfidence: "high" | "low";
+  /**
+   * 0–1 score set by the visual pass (lib/walkability.ts): how open the
+   * lower-centre of the frame is — proxy for "a clear path to walk into".
+   * Undefined = not scored; ranking treats it as neutral.
+   */
+  walkability?: number;
 }
 
 /** A normalized, model-agnostic seed artifact served from blob storage. */

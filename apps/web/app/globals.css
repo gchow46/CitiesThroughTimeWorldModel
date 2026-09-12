@@ -445,6 +445,10 @@ h1 em {
 .hud-top {
   top: 24px;
 }
+.hud-actions {
+  display: flex;
+  gap: 10px;
+}
 .hud-top button,
 .hud-bottom a {
   pointer-events: auto;

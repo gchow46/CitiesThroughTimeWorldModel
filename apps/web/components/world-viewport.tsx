@@ -14,6 +14,7 @@ export function WorldViewport({
   decade,
   preview,
   onExit,
+  onReseed,
   send,
   onVideo,
 }: {
@@ -23,6 +24,7 @@ export function WorldViewport({
   decade?: number;
   preview: boolean;
   onExit: () => void;
+  onReseed?: () => void;
   send: (controls: Controls) => void;
   onVideo?: (video: HTMLVideoElement | null) => void;
 }) {
@@ -89,7 +91,13 @@ export function WorldViewport({
       />
       {playing && payload && decade !== undefined ? (
         <>
-          <WorldHud payload={payload} decade={decade} preview={preview} onExit={onExit} />
+          <WorldHud
+            payload={payload}
+            decade={decade}
+            preview={preview}
+            onExit={onExit}
+            onReseed={onReseed}
+          />
           {!focused && (
             <div className="enter-overlay">
               <button className="button primary" onClick={() => void enter()}>
