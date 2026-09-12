@@ -8,7 +8,9 @@ interface Stored {
   contentType: string;
 }
 
-const memStore = new Map<string, Stored>();
+// globalThis: survives Next.js dev per-route module re-evaluation.
+const g = globalThis as { __cttBlobs?: Map<string, Stored> };
+const memStore = (g.__cttBlobs ??= new Map<string, Stored>());
 
 export function blobConfigured(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);

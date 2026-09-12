@@ -4,6 +4,11 @@ export function isMockWorld(): boolean {
   return process.env.MOCK_WORLD === "1";
 }
 
+/** Dev escape: mint fake JWTs while still running the real pipeline. */
+export function isMockToken(): boolean {
+  return isMockWorld() || process.env.MOCK_TOKEN === "1";
+}
+
 export function defaultModel(): ModelId {
   const env = process.env.WORLD_MODEL;
   return (MODEL_IDS as readonly string[]).includes(env ?? "") ? (env as ModelId) : MODEL_IDS[0];

@@ -14,7 +14,14 @@ const TARGET_ASPECT = TARGET_W / TARGET_H;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/tiff"]);
 
 async function fetchImage(url: string): Promise<Buffer> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    // Wikimedia upload servers 429 requests without a descriptive UA.
+    headers: {
+      "user-agent":
+        "CitiesThroughTime/0.1 (https://github.com/gchow46/CitiesThroughTimeWorldModel)",
+    },
+  });
   if (!res.ok) throw new Error(`seed fetch ${res.status}`);
   const type = res.headers.get("content-type")?.split(";")[0].trim() ?? "";
   if (!ALLOWED_TYPES.has(type)) throw new Error(`unsupported content-type: ${type}`);

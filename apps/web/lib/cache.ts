@@ -54,7 +54,10 @@ function getRedis(): Redis | null {
   return redis;
 }
 
-const mem = new MemoryStore();
+// globalThis: Next.js dev can evaluate module graphs per route — a plain
+// module-level Map would split state between handlers.
+const g = globalThis as { __cttMem?: MemoryStore; __cttLocks?: Map<string, Promise<unknown>> };
+const mem = (g.__cttMem ??= new MemoryStore());
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
   const r = getRedis();
@@ -88,7 +91,7 @@ export function resetMemoryCache(): void {
   mem.clear();
 }
 
-const locks = new Map<string, Promise<unknown>>();
+const locks = (g.__cttLocks ??= new Map<string, Promise<unknown>>());
 
 /** Per-key mutex — collapses concurrent cold misses for the same world. */
 export async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {

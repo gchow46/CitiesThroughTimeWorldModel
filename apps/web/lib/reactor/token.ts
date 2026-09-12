@@ -1,5 +1,5 @@
 import type { ModelId } from "@/lib/types";
-import { isMockWorld } from "@/lib/env";
+import { isMockToken } from "@/lib/env";
 import { MODELS } from "./registry";
 
 const REACTOR_TOKENS_URL = "https://api.reactor.inc/tokens";
@@ -22,7 +22,7 @@ export class UpstreamError extends Error {
  * single model. The API key must never appear in any response.
  */
 export async function mintToken(modelId: ModelId): Promise<MintedToken> {
-  if (isMockWorld()) {
+  if (isMockToken()) {
     return {
       token: `mock-jwt.${modelId}.dev`,
       model: modelId,

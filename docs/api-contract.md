@@ -60,7 +60,7 @@ Budget: ≤ 25s cold (≤ 30s with restoration), ≤ 2s warm (shared-cache hit).
 > **Streamed errors.** Validation, rate-limit and model-resolution failures
 > return the HTTP status above. Once the NDJSON stream has started, errors
 > arrive as the **final line** instead: `{ "status": 404, "error": "...",
-> "message": "...", "closestDecade?": ... }` — the HTTP status is already
+"message": "...", "closestDecade?": ... }` — the HTTP status is already
 > committed, so clients must check the last line for an `error` field.
 
 **Model resolution** (also used by `/api/reactor/token`): `model` body field or
